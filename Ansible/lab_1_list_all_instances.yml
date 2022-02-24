@@ -1,0 +1,11 @@
+---
+- hosts: localhost
+  connection: local
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: List all Compute Instances in Compartment Sandbox
+      oracle.oci.oci_compute_instance_facts:
+        compartment_id: "{{lookup('env', 'COMPARTMENT_OCID')}}"
+      register: current_instance
+    - debug: msg={{current_instance}}
