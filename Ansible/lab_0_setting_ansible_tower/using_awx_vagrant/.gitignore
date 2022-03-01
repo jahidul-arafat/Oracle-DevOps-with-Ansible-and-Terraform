@@ -1,2 +1,4 @@
 pub_key.json
+
+# ignore all zip files
 *.zip
