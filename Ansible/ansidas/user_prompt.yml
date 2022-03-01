@@ -1,0 +1,8 @@
+- hosts: localhost
+  tasks:
+    - name: Set username from prompt
+      pause:
+        prompt: "Enter Username:"
+      register: result
+    - set_fact:
+        username: "{{ result.user_input }}"

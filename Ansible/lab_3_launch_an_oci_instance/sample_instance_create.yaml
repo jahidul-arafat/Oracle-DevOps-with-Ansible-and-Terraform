@@ -1,0 +1,181 @@
+---
+- hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars:
+    ssh_key_filename: id_rsa_myproject
+
+  vars_prompt:
+    - name: instance_shape
+      prompt: "Enter Instance Shape:"
+      default: "VM.Standard2.1"
+      private: no
+
+    - name: instance_hostname
+      prompt: "Set your instance hostname:"
+      default: "ansibleinstance"
+      private: no
+
+    - name: instance_name
+      prompt: "Set your instance Name:"
+      default: "ansible-instance"
+      private: no
+
+    - name: instance_ad
+      prompt: "Enter AD Name:"
+      default: "oAOj:AP-MUMBAI-1-AD-1"
+      private: no
+
+    - name: instance_compartment
+      prompt: "Enter Your COMPARTMENT OCID:"
+      default: "ocid1.compartment.oc1..aaaaaaaa5hplc4q67l76kzeygvcbbu73da3kxhndhogtfvxgwtpd2xzayecq" # sandbox compartment
+      private: no
+
+    # find OL image ocids per region here: https://docs.cloud.oracle.com/iaas/images/image/501c6e22-4dc6-4e99-b045-cae47aae343f/
+    - name: instance_image
+      prompt: "Enter Instance Image ID: [Oracle-Linux-8.5-2022.01.24-0]"
+      default: "ocid1.image.oc1.ap-mumbai-1.aaaaaaaa64semv36x5gssmswplzkuirimzoapsvd4rh3s7sbdfev6fpkd6yq"
+      private: no
+
+    - name: instance_subnet_id
+      prompt: "Instance Subnet ID:[Public/Private]:"
+      default: "ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaapltjnevul4idswrxbozu32ovffo7dgmlx6kyyjr2puqpzdiyscsq"
+      private: no
+
+
+  tasks:
+    - block: # Task-1/1.1/1.2
+      # Task-01: Generate the SSH keys of you dont supply the ssh-key for instance connectivity testing
+      # 1.1 Creating the ssh-key temp directory
+      - name: Create Ansible SSH Directory
+        file: path=./ansible_ssh state=directory
+
+      # 1.2 Generating the ssh-key in tmp directory
+      - name: generate SSH key "{{ssh_key_filename}}"
+        openssh_keypair:
+          path: "./ansible_ssh/{{ssh_key_filename}}"
+          type: rsa
+          size: 4096
+          state: present
+          force: no
+      - set_fact:
+          ssh_public_key: "./ansible_ssh/{{ssh_key_filename}}.pub"
+          ssh_private_key: "./ansible_ssh/{{ssh_key_filename}}"
+      when: "'SAMPLE_PUBLIC_SSH_KEY' not in ansible_env"
+
+    # Set the system ssh key based on whether user passed the ssh-key, or the system generated itself as above
+    - set_fact:
+        SSH_AUTHORIZED_KEYS: "{{ lookup('env', 'SAMPLE_PUBLIC_SSH_KEY') if 'SAMPLE_PUBLIC_SSH_KEY' in ansible_env else lookup('file',  ssh_public_key ) }}"
+
+    # Task-02: Launch a Compute Instance in Oracle Cloud
+    # 2.1 Launching the instance with user input
+    - name: Launch an instance
+      oci_compute_instance:
+        availability_domain: "{{ instance_ad }}"
+        compartment_id: "{{ instance_compartment }}"
+        name: "{{instance_name}}"
+        image_id: "{{ instance_image }}"
+        shape: "{{ instance_shape }}"
+        create_vnic_details:
+            assign_public_ip: True
+            hostname_label: "{{ instance_hostname }}"
+            subnet_id: "{{ instance_subnet_id }}"
+        metadata:
+            ssh_authorized_keys: "{{ SSH_AUTHORIZED_KEYS }}"
+      register: result
+
+    # 2.2 Print the instance details in console as debug
+    - name: Print instance details
+      debug:
+        msg: "Launched a new instance {{ result }}"
+    - set_fact:
+        instance_id: "{{result.instance.id }}"                  # after launch variable
+
+    # 2.3 Fetch the Public IP of the instance
+    # This is a 3 step process
+    # i. Get the VNIC attachment details of the instance
+    # ii. Get the vnic_id of that vnic_attachment
+    # iii. Fetch the public ip of that vnic_id with which your instance is attached
+
+    # i. Get the VNIC attachment details of the instance
+    - name: Get the VNIC attachment details of instance
+      oci_compute_vnic_attachment_facts:
+        compartment_id: "{{ instance_compartment }}"
+        instance_id: "{{ instance_id }}"                        # after launch variable
+      register: result
+
+    # ii. Get the vnic_id of that vnic_attachment
+    - name: Get details of the VNIC
+      oci_network_vnic_facts:
+        id: "{{ result.vnic_attachments[0].vnic_id }}"          # after launch variable
+      register: result
+    - set_fact:
+        instance_public_ip: "{{result.vnic.public_ip}}"         # after launch variable
+
+    # iii. Fetch the public ip of that vnic_id with which your instance is attached
+    - name: Print the public ip of the newly launched instance
+      debug:
+        msg: "Public IP of launched instance {{ instance_public_ip }}"
+
+    # Task-03: SSH Connection Testing
+    # 3.1 Let the ssh open first; wait a bit
+    # and decide whether to use the connection with your supplied ssh-key or system generated ssh-key
+
+    # i. Wait a bit, let the connection open first
+    - name: Wait (upto 10 minutes) for port 22 to become open
+      wait_for:
+        port: 22
+        host: '{{ instance_public_ip }}'
+        state: started
+        delay: 10
+        timeout: 600
+      vars:
+        ansible_connection: local
+    # ii. Using system-generated ssh-key
+    - set_fact:
+        # Use "opc" user as this is an OL image
+        # Disable SSH's strict host key checking just for this one command invocation
+        ssh_command_with_generated_key: ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -i {{ssh_private_key}} opc@{{ instance_public_ip }} uname -a
+      when: "'SAMPLE_PUBLIC_SSH_KEY' not in ansible_env"
+    # iii. Using your own ssh-key
+    - set_fact:
+        # Use "opc" user as this is an OL image
+        # Disable SSH's strict host key checking just for this one command invocation
+        ssh_command_with_custom_key: ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" opc@{{ instance_public_ip }} uname -a
+      when: "'SAMPLE_PUBLIC_SSH_KEY' in ansible_env"
+
+    # 3.2 Attempt the ssh-connection with the newly launched instance and return the connection status response to console as debug
+    - name: Attempt a ssh connection to the newly launched instance
+      command: "{{ ssh_command_with_custom_key if 'SAMPLE_PUBLIC_SSH_KEY' in ansible_env else ssh_command_with_generated_key }}"
+      retries: 3
+      delay: 5
+      register: result
+      until: result.rc == 0
+
+    - name: Print SSH response from launched instance
+      debug:
+        msg: "SSH response from instance -> {{ result.stdout_lines }}"
+    - set_fact:
+        ssh_response_status: "{{ result.stdout_lines }}"
+
+    # Task 04: Save all facts to host specific file
+    - name: Save all facts to host specific file
+      copy:
+        content: " OCI FACTS on {{instance_name}}\n**Ansible Playbook by Jahidul Arafat\n------------------------------------------------------------------------\n
+        >> instance_public_ip: {{instance_public_ip}}\n
+        >> instance_hostname: {{instance_hostname}}\n
+        >> instance_display_name: {{instance_name}}\n
+        >> instance_id: {{instance_id}}\n\n
+
+        >> instance_shape: {{instance_shape}}\n
+        >> instance_image: {{instance_image}}\n\n
+
+        >> instance_ad: {{instance_ad}}\n
+        >> instance_compartment: {{instance_compartment}}\n
+        >> instance_subnet_id: {{instance_subnet_id}}\n\n
+
+        >> ssh_response_status: {{ssh_response_status}}
+        "
+        dest: ./oci_instance_facts_details.txt
+

@@ -1,0 +1,52 @@
+---
+- name: Terminate the Instance Pool
+  hosts: localhost
+  collections:
+    - oracle.oci
+  vars:
+    json_report: ./report.json
+
+  vars_prompt:
+    - name: instance_pool_id
+      prompt: "Enter instance_pool_id"
+      default: "ocid1.instancepool.oc1.ap-mumbai-1.aaaaaaaaijq4tn33fkdy4dsk6wbqfm3taz43qxgc3df76vr5ixp3kd5qub7q"
+      private: no
+
+    - name: instance_configuration_id
+      prompt: "Enter instance_configuration_id"
+      default: "ocid1.instanceconfiguration.oc1.ap-mumbai-1.aaaaaaaalqjuxne7yo6ciho3g24nugppjljcgjd2aqskc3uudm5xdtjpeueq"
+      private: no
+
+  tasks:
+    # Task-01: Terminate the instance pool
+    # This will also delete all the instances in that instance pool
+    - name: Terminate the instance pool
+      oci_compute_management_instance_pool:
+        id: "{{instance_pool_id}}"
+        state: absent
+
+    # Task-02: Delete the Instance Configuration
+    - name: Delete the instance configuration
+      oci_compute_management_instance_configuration:
+        id: "{{instance_configuration_id}}"
+        state: absent
+
+    # Task-03: Report the instance-pool deletion status in report.json
+    - name: Report the instance-pool deletion status in report.json
+      oci_json_patch:
+        src: "{{json_report}}"
+        operations:
+          - op: add
+            path: "/0/teardown_status"
+            value: {}
+          - op: add
+            path: "/0/teardown_status/instance_pool"
+            value: "Terminated"
+          - op: add
+            path: "/0/teardown_status/instance_configuration"
+            value: "Deleted"
+        pretty: yes
+        create: yes
+
+
+

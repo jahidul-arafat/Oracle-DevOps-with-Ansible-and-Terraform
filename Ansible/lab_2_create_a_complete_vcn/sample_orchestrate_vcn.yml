@@ -1,0 +1,38 @@
+---
+- hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars_prompt:
+    - name: vcn_id
+      prompt: Enter VCN OCID
+      default: "ocid1.vcn.oc1.ap-mumbai-1.amaaaaaa2br7tayak6cmmwyfteyjs4zoxjc2b5pse4zxth6mq5vkd7w4o4ea" #ansible-vcn #sample-vcn
+      private: no
+
+  tasks:
+    #===================================== PART-B: Updating an Existing VCN ============================================
+    # Task-01: Update the name of the vcn
+    - block: # this block consists of 3 tasks to update a vcn display name
+      # 1.1 A new VCN name
+      - name: Enter a new VCN Name
+        pause:
+          prompt: "Enter a new VCN Name:"
+        register: result_name
+
+      # 1.2 A new VCN DNS label
+      - name: Enter new VCN DNS Label
+        pause:
+          prompt: "Enter nes DNS Label:"
+        register: result_dnslabel
+
+      # 1.3 Updating the VCN infos
+      - name: Upate the VCN informations
+        oci_network_vcn:
+          vcn_id: "{{vcn_id}}"
+          display_name: "{{result_name.user_input}}"        # new vcn name
+          dns_label: "{{result_dnslabel.user_input}}"       # new vcn dns label
+          state: present
+      - debug:
+          msg: "VCN Infos Updated to: {{result_name.user_input}} and {{result_dnslabel.user_input}}"
+      tags: update_vcn
+      when: state == "present"   # update only if the vcn is present

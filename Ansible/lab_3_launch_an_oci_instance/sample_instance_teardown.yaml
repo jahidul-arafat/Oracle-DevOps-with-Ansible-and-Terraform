@@ -1,0 +1,16 @@
+---
+- hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars_prompt:
+    - name: instance_id
+      prompt: "Enter Instance ID [Check ./oci_instance_facts_details.txt]: "
+      private: no
+  tasks:
+    - name: Terminate the instance
+      oci_compute_instance:
+        id: "{{ instance_id }}"
+        state: absent
+    - debug:
+        msg: "Instance {{instance_id}} is terminated"

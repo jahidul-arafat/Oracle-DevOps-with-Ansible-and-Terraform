@@ -1,0 +1,58 @@
+---
+- hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    file_name: ./fetched_oci_facts_details.txt
+    json_file_name: ./oci_facts_details.json
+
+  vars_prompt:
+    - name: instance_compartment
+      prompt: "Enter Your COMPARTMENT OCID"
+      default: "ocid1.compartment.oc1..aaaaaaaa5hplc4q67l76kzeygvcbbu73da3kxhndhogtfvxgwtpd2xzayecq" # sandbox compartment
+      private: no
+
+  tasks:
+    # Task-1: Get the list of all instances in a specific Compartment and display the fetched info in terminal
+    - name: List all Compute Instances in Compartment Sandbox and register to a variable named "result"
+      oci_compute_instance_facts:
+        compartment_id: "{{instance_compartment}}"
+      register: result
+    - debug:
+        msg: "{{item.id}}::{{item.display_name}}::{{item.lifecycle_state}}::{{item.primary_private_ip}}"
+      with_items: "{{result.instances}}"
+
+    # Task-2: Check if file exists. If not, then create an empty file
+#    - name: Check if the required file exists
+#      stat:
+#        path: "{{file_name}}"
+#      register: file_data
+
+    - name: Remove the file if it exists
+      ignore_errors: yes
+      file: path="{{file_name}}" state=absent
+      #when: file_data.stat.exists
+
+    - name: Create the file if it doesn't exists
+      ignore_errors: yes
+      file: path="{{file_name}}" state=touch
+      #when: not file_data.stat.exists
+
+
+    # Task-3: Fetch the required instance information and save to a file
+    - name: Get Instance Infos and save to a specific file
+      lineinfile:
+        path: "{{file_name}}"
+        line: "{{item.id}}::{{item.display_name}}::{{item.lifecycle_state}}::{{item.primary_private_ip}}"
+      with_items: "{{result.instances}}"
+
+
+    # Task-3: Save all facts to host specific file
+    - name: Save all facts to host specific file
+      copy:
+        #content: "Total Instances Found: {{result.instances | length}} {{result.instances[0]['id']}}"
+        content: "{{result | to_nice_json}}"
+        dest: "{{json_file_name}}"
+

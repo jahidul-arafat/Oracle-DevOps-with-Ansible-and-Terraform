@@ -1,0 +1,55 @@
+---
+- hosts: localhost
+  collections:
+    - oracle.oci
+  vars_prompt:
+    - name: vcn_id
+      prompt: Enter VCN OCID
+      default: "ocid1.vcn.oc1.ap-mumbai-1.amaaaaaa2br7tayak6cmmwyfteyjs4zoxjc2b5pse4zxth6mq5vkd7w4o4ea" #ansible-vcn
+      private: no
+
+    - name: instance_subnet_id
+      prompt: Enter Subnet OCID
+      default: ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaajl6tlbvrx2gnqkbloy7kvl5rt4nguq7ltnodyogailoink3vbssq
+      private: no
+
+    - name: instance_security_list_ocid
+      prompt: Enter Security List OCID
+      default: ocid1.securitylist.oc1.ap-mumbai-1.aaaaaaaaovwroia4uzvfoeoupz76nqyqwqcawb5e3ikuxmnzx2bsu2z5vdpq
+      private: no
+
+    - name: rt_id
+      prompt: Enter Route Table OCID
+      default: ocid1.routetable.oc1.ap-mumbai-1.aaaaaaaa3zqql324mb7wftrz43edszler5z55jjg2czbynd2mzmy2jyhd2sq
+      private: no
+
+    - name: ig_id
+      prompt: Enter Internet Gateway OCID
+      default: ocid1.internetgateway.oc1.ap-mumbai-1.aaaaaaaa2jrldxk42t4mk5sm3ra2ufb2lqjt3me4bitfgdhofwbuldv4fp7a
+      private: no
+
+  tasks:
+    - name: Delete the subnet
+      oci_network_subnet:
+        id: "{{ instance_subnet_id }}"
+        state: absent
+
+    - name: Delete the security list
+      oci_network_security_list:
+        id: "{{ instance_security_list_ocid }}"
+        state: absent
+
+    - name: Delete the route table
+      oci_network_route_table:
+        id: "{{ rt_id }}"
+        state: absent
+
+    - name: Delete the Internet Gateway
+      oci_network_internet_gateway:
+        id: "{{ ig_id }}"
+        state: absent
+
+    - name: Delete the VCN
+      oci_network_vcn:
+        vcn_id: "{{ vcn_id }}"
+        state: absent

@@ -1,0 +1,79 @@
+---
+- name: Create a sample JSON file
+  file: path="{{json_report}}" state=touch
+
+- name: Copy the json file structure in the file
+  copy:
+    content: "[{}]"
+    dest: "{{json_report}}"
+
+- name: Save all facts to report
+  oci_json_patch:
+    src: "{{json_report}}"
+    operations:
+      - op: add
+        path: "/0/infos"
+        value: {}
+      - op: add
+        path: "/0/infos/automated_by"
+        value: "Jahidul Arafat"
+      - op: add
+        path: "/0/infos/linkedin"
+        value: "https://www.linkedin.com/in/jahidul-arafat-791a7490/"
+
+      - op: add
+        path: "/0/instance_pool"
+        value: {}
+      - op: add
+        path: "/0/instance_pool/instance_pool_name"
+        value: "{{instance_pool_name}}"
+      - op: add
+        path: "/0/instance_pool/instance_pool_id"
+        value: "{{instance_pool_id}}"
+      - op: add
+        path: "/0/instance_pool/instance_pool_configuration"
+        value: {}
+      - op: add
+        path: "/0/instance_pool/instance_pool_configuration/instance_pool_configuration_name"
+        value: "{{instance_pool_configuration_name}}"
+      - op: add
+        path: "/0/instance_pool/instance_pool_configuration/instance_configuration_id"
+        value: "{{instance_configuration_id}}"
+      - op: add
+        path: "/0/instance_pool/instance_pool_configuration/instance_display_name"
+        value: "{{instance_display_name}}"
+      - op: add
+        path: "/0/instance_pool/instance_pool_configuration/instance_shape"
+        value: "{{instance_shape}}"
+      - op: add
+        path: "/0/instance_pool/instance_pool_configuration/instance_image"
+        value: "{{instance_image}}"
+      - op: add
+        path: "/0/instance_pool/vnic_attachments"
+        value: "{{vnic_attachments}}"
+      - op: add
+        path: "/0/instance_pool/instance_pool_instances"
+        value: {}
+      - op: add
+        path: "/0/instance_pool/instance_pool_instances/instance_pool_instances"
+        value: "{{instance_pool_instances}}"
+      - op: add
+        path: "/0/instance_pool/instance_pool_instances/instance_id"
+        value: "{{instance_id}}"
+      - op: add
+        path: "/0/instance_pool/instance_pool_instances/instance_public_ip"
+        value: "{{instance_public_ip}}"
+      - op: add
+        path: "/0/instance_pool/instance_pool_instances/ssh-response-status"
+        value: "{{ssh_response_status}}"
+      - op: add
+        path: "/0/instance_pool/compartment"
+        value: "{{instance_compartment}}"
+      - op: add
+        path: "/0/instance_pool/availability_domain"
+        value: "{{instance_ad}}"
+      - op: add
+        path: "/0/instance_pool/subnet_id"
+        value: "{{instance_subnet_id}}"
+    pretty: yes
+    create: yes
