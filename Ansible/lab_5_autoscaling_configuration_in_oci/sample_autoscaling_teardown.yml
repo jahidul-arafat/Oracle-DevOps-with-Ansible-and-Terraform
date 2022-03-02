@@ -1,0 +1,21 @@
+---
+- name: Terminate the Autoscaling Configuration
+  hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars_prompt:
+    - name: auto_scaling_configuration_id
+      prompt: "Enter auto_scaling_configuration_id"
+      default: "ocid1.autoscalingconfiguration.oc1.ap-mumbai-1.aaaaaaaa6ffo6futeztomacdwe7xiea67fflghnqjed4pzy74xgfcflpjola"
+      private: no
+
+  tasks:
+    - name: Delete the Autoscaling Configuration for the instance pool
+      oci_autoscaling_auto_scaling_configuration:
+        auto_scaling_configuration_id: "{{auto_scaling_configuration_id}}"
+        state: absent
+    - debug:
+        msg: "Autoscaling Configuration {{auto_scaling_configuration_id}} is deleted"
+
+

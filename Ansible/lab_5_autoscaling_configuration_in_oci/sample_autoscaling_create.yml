@@ -1,0 +1,159 @@
+---
+# Prerequisites:
+# Lab-02: Create a complete VCN
+# Lab-04: Create an Instance Pool using Instance Configuration
+# References
+# Module Autoscaling: oracle.oci.oci_autoscaling_auto_scaling_configuration
+# Notes:
+# One Instance Pool can only be associated to only one autoscaling configuration
+# Prepared by Jahidul Arafat
+
+- name: Sample for Creatign Autoscaling Configuration along with Autoscaling policies
+  hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars_prompt:
+    # Input Section -01: Select the Compartment and AD
+    - name: instance_compartment
+      prompt: "Enter Your COMPARTMENT OCID:"
+      default: "ocid1.compartment.oc1..aaaaaaaa5hplc4q67l76kzeygvcbbu73da3kxhndhogtfvxgwtpd2xzayecq" # sandbox compartment
+      private: no
+
+    # Input Section-02: Autoscaling Configuration
+    # AutoscalingConfigurationName, AutoscalingPolicyName, InstancePoolID
+    - name: autoscaling_config_name
+      prompt: "Autoscaling Configuration Name"
+      default: "autoscaling-config"
+      private: no
+
+    - name: autoscaling_policy_name
+      prompt: "Autoscaling Policy Name"
+      default: "autoscaling-policy"
+      private: no
+
+    - name: autoscaling_policy_type
+      prompt: "Enter Your Autoscaling Policy Type [threshold/scheduled]"
+      default: "threshold"
+      private: no
+
+    - name: instance_pool_id
+      prompt: "Instance Pool ID"
+      default: "ocid1.instancepool.oc1.ap-mumbai-1.aaaaaaaafqm3445r3di4djrudz6rjyx23pvfxqk2l2yzonzvsqrxff4rjgpq"
+      private: no
+
+  tasks:
+    # Task-01: Create auto_scaling_configuration for threshold policy instance pool
+    # autoscaling_configuration: name, enabled, policies
+    # policies: name & policy_type+ scaling_limits + Rules {scaling_out, scaling_in}
+    - block:
+      - name: Create auto_scaling_configuration for threshold policy instance pool
+        oci_autoscaling_auto_scaling_configuration:
+          # A. Set autoscaling_configurations: name, in_which_compartment, whether_enabled_or_not
+          display_name: "{{autoscaling_config_name}}_threshold"
+          compartment_id: "{{instance_compartment}}"
+          cool_down_in_seconds: 300   # Minimum period of time between scaling actions
+          is_enabled: true
+
+          # B. Set the autoscaling_configuration_policies by <THRESHOLD>
+          # set_policy_name, policy_type, scaling_limit, 2x rules: scale_out, scale_in
+          policies: # list / elements=dictionary
+            - display_name: "{{autoscaling_policy_name}}_threshold"
+              policy_type: "{{autoscaling_policy_type}}" # threshold
+
+              # Scaling Limits
+              capacity: # dict
+                initial: 1
+                max: 2
+                min: 1
+
+              # 2x Rules: ScaleOut, ScaleIn
+              rules: # list / elements=dictionary
+                # Rule 01: Scale Out - Add an Instance if threshold{cpu_utilization} > 60%
+                - action:
+                    type: "CHANGE_COUNT_BY"
+                    value: 1
+                  display_name: "{{autoscaling_policy_name}}_threshold_inc"
+                  metric:
+                    metric_type: "CPU_UTILIZATION"
+                    threshold:
+                      operator: GT
+                      value: 60
+
+                # Rule 02: Scale In - Remove an Instance if threshold{cpu_utilization} < 30%
+                - action:
+                    type: "CHANGE_COUNT_BY"
+                    value: -1
+                  display_name: "{{autoscaling_policy_name}}_threshold_dec"
+                  metric:
+                    metric_type: "CPU_UTILIZATION"
+                    threshold:
+                      operator: LT
+                      value: 30
+          resource: # under autoscaling_configuration, not under policies
+            id: "{{instance_pool_id}}"
+            type: "instancePool"
+        register: result
+
+      - name: Print autoscaling configuration policy details for threshold based policy
+        debug:
+          msg: "Created new autoscaling configuration policy {{result}}"
+      - set_fact:
+          auto_scaling_configuration_id: "{{result.auto_scaling_configuration.id}}"
+
+      tags: autoscaleconfig_threshold
+      when: autoscaling_policy_type == "threshold"
+
+    # Task-2
+    - block:
+      - name: Create auto_scaling_configuration for Scheduled policy instance pool
+        oci_autoscaling_auto_scaling_configuration:
+          # A. Set autoscaling_configurations: name, in_which_compartment, whether_enabled_or_not
+          display_name: "{{autoscaling_config_name}}_scheduled"
+          compartment_id: "{{instance_compartment}}"
+          is_enabled: true
+
+          # B. Set the autoscaling_configuration_policies by <THRESHOLD>
+          # set_policy_name, policy_type, scaling_limit, 1x cron job
+          policies: # list / elements=dictionary
+            - display_name: "{{autoscaling_policy_name}}_scheduled"
+              policy_type: "{{autoscaling_policy_type}}" # scheduled
+
+              # Target Pool Size
+              capacity: # dict
+                initial: 1
+                max: 2
+                min: 1
+
+              # Execution Schedule/ Cron Job
+              # At 10:15 AM, only on Monday, UTC
+              # 1- sunday, 2-Monday, 3- Tuesday, 4- Wednesday, 5- Thursday, 6-Friday, 7-Saturday
+              # <Year>  <min> <hour>  <day_of_the_month>  <month> <day_of_the_week>
+              #   0       15    10        ?(any)            *(every)        2(monday)
+              execution_schedule: # dict
+                expression: "0 15 10 ? * 2"  # 0(Year) 15(min) 10(hour) ?(day_of_the_month) *(month) 2(day_of_the_week)
+                timezone: "UTC"
+                type: "cron"
+
+          resource: # dict # under autoscaling_configuration, not under policies
+            id: "{{instance_pool_id}}"
+            type: "instancePool"
+        register: result
+
+      - name: Print autoscaling configuration policy details for scheduled based policy
+        debug:
+          msg: "Created new autoscaling configuration policy {{result}}"
+      - set_fact:
+          auto_scaling_configuration_id: "{{result.auto_scaling_configuration.id}}"
+
+      tags: autoscaleconfig_scheduled
+      when: autoscaling_policy_type == "scheduled"
+
+
+
+
+
+
+
+
+
