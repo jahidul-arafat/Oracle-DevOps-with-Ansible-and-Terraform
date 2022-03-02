@@ -4,6 +4,7 @@
 # Lab-04: Create an Instance Pool using Instance Configuration
 # References
 # Module Autoscaling: oracle.oci.oci_autoscaling_auto_scaling_configuration
+# https://docs.oracle.com/en-us/iaas/tools/oci-ansible-collection/2.44.0/collections/oracle/oci/oci_autoscaling_auto_scaling_configuration_module.html
 # Notes:
 # One Instance Pool can only be associated to only one autoscaling configuration
 # Prepared by Jahidul Arafat
@@ -48,7 +49,7 @@
     # policies: name & policy_type+ scaling_limits + Rules {scaling_out, scaling_in}
     - block:
       - name: Create auto_scaling_configuration for threshold policy instance pool
-        oci_autoscaling_auto_scaling_configuration:
+        oci_autoscaling_auto_scaling_configuration: #dict
           # A. Set autoscaling_configurations: name, in_which_compartment, whether_enabled_or_not
           display_name: "{{autoscaling_config_name}}_threshold"
           compartment_id: "{{instance_compartment}}"
