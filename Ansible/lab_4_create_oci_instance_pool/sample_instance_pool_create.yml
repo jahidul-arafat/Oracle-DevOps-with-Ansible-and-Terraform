@@ -113,7 +113,7 @@
         compartment_id: "{{instance_compartment}}"
         name: "{{instance_pool_name}}"
         instance_configuration_id: "{{instance_configuration_id}}"
-        size: 2 # launch 2 instances when pool is created
+        size: 1 # launch 1 instances when pool is created
         placement_configurations:   # use '-' infront of ad as placement_configurations is a dict, not a list  # Error: 'placement_configurations' is of type <class 'dict'> and we were unable to convert to list: <class 'dict'> cannot be converted to a list"
           - availability_domain: "{{instance_ad}}"
             primary_subnet_id: "{{instance_subnet_id}}"
