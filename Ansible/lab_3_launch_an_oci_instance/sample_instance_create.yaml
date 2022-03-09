@@ -83,6 +83,8 @@
             subnet_id: "{{ instance_subnet_id }}"
         metadata:
             ssh_authorized_keys: "{{ SSH_AUTHORIZED_KEYS }}"
+            # install nginx webserver. Load the script from files/user_data.tpl
+            user_data: "{{ lookup('file', '{{ playbook_dir}}/files/user_data.tpl')| b64encode}}"
       register: result
 
     # 2.2 Print the instance details in console as debug
