@@ -97,6 +97,8 @@
               image_id: "{{instance_image}}"
             metadata:
               ssh_authorized_keys: "{{SSH_AUTHORIZED_KEYS}}"
+              # install nginx webserver. Load the script from files/user_data.tpl
+              user_data: "{{ lookup('file', '{{ playbook_dir}}/files/user_data.tpl')| b64encode}}"
       register: result
     - set_fact:
         instance_configuration_id: "{{result.instance_configuration.id}}"       # Derived Value. Will be used NEXT-->>(instance_pool)
