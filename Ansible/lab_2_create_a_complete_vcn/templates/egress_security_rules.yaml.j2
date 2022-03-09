@@ -1,10 +1,10 @@
 ---
 instance_egress_security_rules:
   # Allow ssh connections outside
-  - destination: "{{ quad_zero_route }}"
-    protocol: "{{ TCP_protocol }}"
+  - destination: "{{ all_cidr_block }}"
+    protocol: "{{ tcp_protocol }}"
     tcp_options:
       destination_port_range:
-        min: {{ SSH_port }}
-        max: {{ SSH_port }}
+        min: {{ ssh_port }}
+        max: {{ ssh_port }}
 

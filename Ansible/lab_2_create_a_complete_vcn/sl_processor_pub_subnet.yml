@@ -1,0 +1,31 @@
+---
+# SL will be attached to subnet --> when creating subnet
+# Create a security list for allowing access to public instance
+# Use a jinja2 template of the ingress and egress security rules to generate
+# a templated version of the final rules.
+
+# 1.1 (Preprocessing) Create ingress rule body in /tmp
+- name: create ingress rules yaml body
+  template: src=./templates/ingress_security_rules.yaml.j2 dest=/tmp/instance_ingress_security_rules.yaml # at local machine /tmp
+
+# 1.2 (Preprocessing) Create egress rule body in /tmp
+- name: create egress yaml body
+  template: src=./templates/egress_security_rules.yaml.j2 dest=/tmp/instance_egress_security_rules.yaml   # at local machine /tmp
+
+# 1.3 (Preprocessing) Load the variables defined in the ingress rules yml body
+- name: load the variables defined in the ingress rules yaml body
+  include_vars:
+    file: /tmp/instance_ingress_security_rules.yaml
+    name: loaded_ingress
+- name: print loaded_ingress
+  debug:
+    msg: "loaded ingress is {{loaded_ingress}}"
+
+# 1.4 (Preprocessing) Load the variables defined in the egress rules yml body
+- name: load the variables defined in the egress rules yaml body
+  include_vars:
+    file: /tmp/instance_egress_security_rules.yaml
+    name: loaded_egress
+- name: print loaded_egress
+  debug:
+    msg: "loaded egress is {{loaded_egress}}"

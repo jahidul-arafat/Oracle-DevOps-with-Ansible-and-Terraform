@@ -1,38 +1,38 @@
 ---
 instance_ingress_security_rules:
   # A. Allow incoming SSH connections
-  - source: "{{ quad_zero_route }}"
-    protocol: "{{ TCP_protocol }}"
+  - source: "{{ all_cidr_block }}"
+    protocol: "{{ tcp_protocol }}"
     tcp_options:
       destination_port_range:
-        min: {{ SSH_port }}
-        max: {{ SSH_port }}
+        min: {{ ssh_port }}
+        max: {{ ssh_port }}
 
   # B. Protocols for FSS- TCP/111,2048-2050; UDP/111,2048
   # B1. Allow TCP traffic for port: 111
-  - source: "{{ quad_zero_route }}"
-    protocol: "{{ TCP_protocol }}"
+  - source: "{{ all_cidr_block }}"
+    protocol: "{{ tcp_protocol }}"
     tcp_options:
       destination_port_range:
         min: 111
         max: 111
   # B2. Allow TCP traffic for port: 2048-2050
-  - source: "{{ quad_zero_route }}"
-    protocol: "{{ TCP_protocol }}"
+  - source: "{{ all_cidr_block }}"
+    protocol: "{{ tcp_protocol }}"
     tcp_options:
       destination_port_range:
         min: 2048
         max: 2050
   # B3. Allow UDP traffic for port: 111
-  - source: "{{ quad_zero_route }}"
-    protocol: "{{ UDP_protocol }}"
+  - source: "{{ all_cidr_block }}"
+    protocol: "{{ udp_protocol }}"
     udp_options:
       destination_port_range:
         min: 111
         max: 111
   # B4. Allow UDP traffic for port: 2048
-  - source: "{{ quad_zero_route }}"
-    protocol: "{{ UDP_protocol }}"
+  - source: "{{ all_cidr_block }}"
+    protocol: "{{ udp_protocol }}"
     udp_options:
       destination_port_range:
         min: 2048
@@ -40,15 +40,15 @@ instance_ingress_security_rules:
 
   # C. Protocols for Webserver
   # C1. Allow TCP traffic for port: 80/HTTP
-  - source: "{{ quad_zero_route }}"
-    protocol: "{{ TCP_protocol }}"
+  - source: "{{ all_cidr_block }}"
+    protocol: "{{ tcp_protocol }}"
     tcp_options:
       destination_port_range:
         min: 80
         max: 80
   # C2. Allow TCP traffic for port: 443/HTTPS
-  - source: "{{ quad_zero_route }}"
-    protocol: "{{ TCP_protocol }}"
+  - source: "{{ all_cidr_block }}"
+    protocol: "{{ tcp_protocol }}"
     tcp_options:
       destination_port_range:
         min: 443
