@@ -1,0 +1,32 @@
+---
+- name: Terminate the Public Load Balancer
+  hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars_prompt:
+    - name: loadbalancer_id
+      prompt: "Enter Load Balancer ID:"
+      default: "ocid1.loadbalancer.oc1.ap-mumbai-1.aaaaaaaa3tumo26trzdvsj7pp2jthfnvzg27lcjtszvw2uprzebcvrfejyeq"
+      private: no
+    - name: cert_path
+      prompt: "Enter the CA artifact path"
+      default: "./ca_certificates"
+      private: no
+
+  tasks:
+    # Task-01: Delete the Public Load Balancer
+    - name: Deleting the Public Load Balancer
+      oci_loadbalancer_load_balancer:
+        load_balancer_id: "{{loadbalancer_id}}"
+        state: absent
+    - debug:
+        msg: "LoadBalancer OCID: {{loadbalancer_id}} has been deleted"
+
+    # Task-02: Delete the CA files created earlier; Conditional delete -> if Present.
+    - name: Clear artifact path
+      file:
+        path: "{{cert_path}}"
+        state: absent
+      when: cert_path is defined
+

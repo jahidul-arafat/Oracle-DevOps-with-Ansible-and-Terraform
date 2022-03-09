@@ -1,0 +1,76 @@
+---
+#- name: Create a CA and let it issue the certificates to Remote-Clients send its CSR to CA
+#  hosts: localhost
+#  tasks:
+
+# Task-01: Create a directory named ./ca_certificates to keep all the newly generated certificates
+- name: create temporary directory for certificates
+  file:
+    path: ./ca_certificates
+    state: directory
+  register: result
+- debug:
+    msg: "Certificate Path: {{result.path}}"
+- set_fact:
+    cert_path: "{{ result.path }}"
+
+# ===========================================================================================
+# Task-02: Generate ROOT CA Private Key and Certificate
+
+# 2.1 Generate ROOT CA Private key using OPENSSL, 2048 bits using RSA algo
+# ca.key
+- name: Generate ROOT CA Private Key
+  openssl_privatekey:
+    path: "{{cert_path}}/ca.key"
+    type: RSA
+    size: 2048
+
+# 2.2 Generate ROOT CA Certificate valid for 1 year using its own private key in PKI
+# ca.crt; this certificate will be used to sign the CSR's from the remote client/server
+# for that after generating the ca.crt, you have to distribute it to the remote_clients
+# the ca.crt file contains the Public Key of ROOT CA, which then remote_client will use for sender authentication and sender non-repudiation
+- name: Generate ROOT CA cert by using its Private Key in PKI Infrastructure valid for 1 year
+  command: openssl req \
+        -x509 -new -days 365 \
+        -subj '/C=BD/ST=Dhaka/L=Mirpur/O=jarotball/CN=www.ansible.oracle.com'
+        -key "{{cert_path}}/ca.key" \
+        -out "{{cert_path}}/ca.crt"
+  args:
+      creates: "{{cert_path}}/ca.crt"  # root CA certificate with which it will sign the CSR of the remote clients
+
+# ===========================================================================================
+# Task-03: Let Remote-client generates its Private Key and Certificate Signing Request (CSR)
+
+# 3.1 Generate Private Key for Remote Client; Here <ansibleclient> in Oracle Cloud Infrastructure will act as our remote client
+# Private Key: ansibleclient.key
+- name: Generate Remote-Clients Private Key Without Passphrase
+  openssl_privatekey:
+      path: "{{cert_path}}/ansibleclient.key"
+      type: RSA
+      size: 2048
+
+# 3.2 Remote Client <ansibleclient> generates an CSR
+# This CSR will be sent to ROOT-CA to sign and issue the Remote-Client a certificate
+# So that every who trusts ROOT-CA, thereby trusts Remote-Client
+- name: Generate Certificate Signing Request With Normal Private Key
+  openssl_csr:
+    path: "{{cert_path}}/ansibleclient.csr"
+    privatekey_path: "{{cert_path}}/ansibleclient.key"
+    country_name: BD
+    organization_name: jarotball
+    state_or_province_name: Dhaka
+    locality_name: Mirpur
+    common_name: www.ansible.oracle.com
+
+# ===========================================================================================
+# Task-04: ROOT-CA sign the CSR and issue a certificate to Remote-Client
+# Now ROOT-CA has the CSR from Remote-Client. Let it sign the CSR by its own Private Key (ca.key)
+# and Send the signed(CSR) aka remoteclient.crt to remote client. This is called issuing a certificate to remote-client
+# Now at this stage, anyone who trust ROOT-CA, could trust Remote-Client as ROOT-CA issued the certificate to it.
+- name: Generate ROOT CA signed Certificate Without Passphrase
+  command: openssl x509 -req \
+        -days 1825 -CA "{{cert_path}}/ca.crt" -CAkey "{{cert_path}}/ca.key" -CAcreateserial \
+        -in "{{cert_path}}/ansibleclient.csr" \
+        -out "{{cert_path}}/ansibleclient.crt"
+  args:
+    creates: "{{cert_path}}/ansibleclient.crt"

@@ -1,9 +1,9 @@
-# How to Setup and Configure a Certificate Authority (CA) on Oracle Linux 8.5
+# How to Setup and Configure a Certificate Authority (CA) on Oracle Linux 8.5 (Hands-on/Manual)
+#### You can find the ansible automation scripts for ROOT CA and Remote-Clinet PKI setup [HERE](./setup_root_ca.yaml) .
 
 ---
 ### Notes
-- [x] CA is an entity responsible for issuing digital certificates to verify identity of websites and 
-and other services on the internet.
+- [x] CA is an entity responsible for issuing digital certificates to verify identity of websites and other services on the internet.
 - [x] Building a private CA will enable you to configure, test and run programs that require encrypted connections between a client and a server.
 - [x] With private CA, you can issue certificates for users, servers or individual programs and services within your infrastructure.
 - [x] OpenVPN and Puppet use their own private CA.
