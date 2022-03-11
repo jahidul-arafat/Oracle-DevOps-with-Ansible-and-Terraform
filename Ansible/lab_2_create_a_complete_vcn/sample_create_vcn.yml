@@ -289,7 +289,7 @@
         PRIVATE_SECURITY_LIST_OCID:{{private_security_list_ocid}}\n
         PUBLIC_SUBNET_ID:{{public_subnet_id}}\n
         PRIVATE_SUBNET_ID:{{private_subnet_id}}"
-        dest: ./oci_facts_details.txt
+        dest: ./report.txt
 
 
 

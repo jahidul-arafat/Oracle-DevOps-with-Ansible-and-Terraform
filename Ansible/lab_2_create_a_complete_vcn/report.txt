@@ -1,0 +1,11 @@
+OCI FACTS 
+ VCN_NAME:ansible-vcn
+ VCN_ID:ocid1.vcn.oc1.ap-mumbai-1.amaaaaaa2br7tayaaimdivtjzlm5f5dsbfqithyf5subnt3apsdpc7wi6dsq
+ IGW_ID:ocid1.internetgateway.oc1.ap-mumbai-1.aaaaaaaa7jxsquxks3mjkmcw4wbcadmbsllyaiurxocbaxtdwqgwyaygbbwa
+ NGW_ID: ocid1.natgateway.oc1.ap-mumbai-1.aaaaaaaadndj2ojo3tcsw2hqkibxr4otbfmkxakvb7qtia7ivjvqncvkazvq
+ PUBLIC_RT_ID:ocid1.routetable.oc1.ap-mumbai-1.aaaaaaaa56d7qitvsk4sry62xzezugbflclxc4onxzijkxjr2dapqja5tg3a
+ PRIVATE_RT_ID:ocid1.routetable.oc1.ap-mumbai-1.aaaaaaaarq2mnvfjqzyznkl2yctjv6vpllxgd2md2cxrzngm3igayrtjytta
+ PUBLIC_SECURITY_LIST_OCID:ocid1.securitylist.oc1.ap-mumbai-1.aaaaaaaa7fpowcwcza5zpbssv4jzaqwosslqwuqlnk3xgr7sg6a2zyucrv5q
+ PRIVATE_SECURITY_LIST_OCID:ocid1.securitylist.oc1.ap-mumbai-1.aaaaaaaaxs2z3o7jz4kieahpy2vsozaql53melxkinfvn3egml43dtmuybsa
+ PUBLIC_SUBNET_ID:ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaa4nwczv7lvvrkrvtc4j5oirfikwikkr7jffaeatyhbkf33ocgfqea
+ PRIVATE_SUBNET_ID:ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaaamlgyiynpw3rp6h2nvjjbqu6fnzgsxz2yhtt6qgu2bqy4tuccilq
