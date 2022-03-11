@@ -1,44 +1,62 @@
-# Setting the Environment
 
-```shell
-# Setting up the OCI API in localhost / Dont try at root user
-> mkdir ~/.oci
-> cd .oci/
-> openssl genrsa -out oci_api_key.pem 2048                              # Generate private key
-> openssl rsa -pubout -in oci_api_key.pem -out oci_api_key_public.pem   # Generate public key
-> openssl rsa -pubout -outform DER -in oci_api_key.pem | openssl md5 -c # Generate message digest/fingerprint
-# Copy and paste the oci_api_key_public.pem Public Key in Settings> users> API Keys> Add API Key in OCI console and compare the fingerprint 
-# Check the ~/.oci/config file
-> cat ~/.oci/config
-[DEFAULT]
-user=<your_user_ocid>
-fingerprint=<fingerprint from api key>
-tenancy=<your tenancy ocid>
-region=ap-mumbai-1
-key_file=~/.oci/oci_api_key.pem
+# Creating a Complete VCN in Oracle Cloud Infrastructure
 
-# Install Ansible in Ubuntu
-> sudo apt update
-> sudo apt install software-properties-common
-> sudo add-apt-repository --yes --update ppa:ansible/ansible
-> sudo apt install ansible
+---
+**Variable Naming Conventions**
+- [x] Input variable names should be as it is in the ansible-doc of that respective oracle.oci module.
+- [x] Changing the input variable names would throw exceptions and results in error.
+- [x] Output variable names can be user defined.
+---
+### This script will help you setup the following VCN components in your OCI:
+#### Task-01: Creating a VCN using module: `oracle.oci.oci_network_vcn`
+- [x] Inputs
+  - [x] cidr_block of the VCN
+  - [x] compartment_id, under which compartment OCID you VCN will be deployed
+  - [x] display_name of the VCN in OCI Console
+  - [x] dns_label, set the dns label for your VCN which will be used for FQDN (Fully Qualified Domain Name)
+- [x] Output
+  - [x] vcn_id of the generated VCN
 
-# Setting up a ansible python virtual environment with ANSIBLE, OCI SDK and ORACLE.OCI module installed
-> python3 -m virtualenv ansible
-> source ansible/bin/activate
-(ansible)>  python3 -m pip install ansible      # install ansible python SDK
-(ansible)>  ansible --version
-(ansible)> pip3 install oci                     # install OCI SDK
-# Install the oracle.oci modules from the git for Ubuntu Linux. Process is much easier for Oracle Linux
-(ansible)> curl -L https://raw.githubusercontent.com/oracle/oci-ansible-collection/master/scripts/install.sh | bash -s -- --verbose
-```
-# How to execute the script
-### Create a VCN in Oracle Cloud
+#### Task-02: Create Gateways : IGW for Public Subnet and NGW for Private Subnet using `module: oci_network_internet_gateway`
+- [x] Create an internet gateway which will be later attached to the default route table
+  - [x] Inputs: {compartment_id, vcn_id, name/of the IGW, is_enabled}
+  - [x] Output: IGW ID-> ig_id
+- [x] Create a Nat Gateway so that instances in private subnet can egress to internet, but no ingress. Attach this NGW into a route rule for private subnet
+  - [x] Inputs: {compartment_id, vcn_id, display_name/ of the NGW}
+  - [x] Outputs: NGW ID: ng_id
+
+#### Task-03: Create 2x Route Tables: Public Route Table and Private Route Table using module `ansible-doc oracle.oci.oci_network_route_table`
+- [x] Create a Public route table to connect internet gateway to the VCN
+  - [x] Inputs: {compartment_id, vcn_id, display_name/of the route table, route_rules/for the public route table where including 0.0.0.0/0 and ig_id associated}
+  - [x] Output: Public Route Table ID -> public_rt_id
+- [x] Create a Private route table to connect NGW to VCN
+  - [x] Inputs: {compartment_id, vcn_id, display_name/of the route table, route_rules/for the private route table where including 0.0.0.0/0 and ng_id associated}
+  - [x] Output: Private Route Table ID -> private_rt_id
+
+#### Task-04: Create 2x Security List: Public Security List and Private Security List  which will be attached to respective subnets using module `oci_network_security_list`
+- [x] Importing the Security List Preprocessing tasks as defined under templates/egress_security_rule.yaml.j2 and templates/ingress_security_rule.yaml.j2 as jinja framework
+- [x] Create a Security list for allowing access to Public subnet.
+  - [x] Inputs: {name/of the security list, compartment_id, vcn_id, ingress_security_rules, egress_security_rules / as imported from the jinja framework above}
+  - [x] Output: public_security_list_ocid
+- [x] Create a Security list for Private subnet.
+  - [x] Inputs: {name/of the security list, compartment_id, vcn_id, ingress_security_rules, egress_security_rules}
+  - [x] Output: public_security_list_ocid
+
+#### Task-05: Create 2x Subnet: Public Subnet and Private Subnet using module `oci_network_subnet`
+- [x] Creating a Public Subnet. Link security_list and route_table with it
+  - [x] Inputs: {availability_domain, cidr_block, compartment_id, vcn_id, dns_label, display_name/of the subnet in OCI console, prohibit_public_ip_on_vnic/false, route_table_id, security_list_ids}
+  - [x] Outputs: public_subnet_id
+- [x] Creating a Private Subnet. Link security_list and route_table with it
+  - [x] Inputs: {availability_domain, cidr_block, compartment_id, vcn_id, dns_label, display_name/of the subnet in OCI console, prohibit_public_ip_on_vnic/true, route_table_id, security_list_ids}
+  - [x] Outputs: public_subnet_id
+
+
+### Execute the Script
 ```shell
 # Create a VCN in Oracle Cloud
 > ansible-playbook sample_create_vcn.yml --syntax-check 
 > ansible-playbook sample_create_vcn.yml --list-tags
-> ansible-playbook sample_create_vcn.yml -v
+> ansible-playbook sample_create_vcn.yml -vvv
 ```
 
 ### Update the VCN information in Oracle Cloud
@@ -46,7 +64,7 @@ key_file=~/.oci/oci_api_key.pem
 # Update the VCN information in Oracle Cloud
 > ansible-playbook sample_orchestrate_vcn.yml --syntax-check 
 > ansible-playbook sample_orchestrate_vcn.yml --list-tags
-> ansible-playbook sample_orchestrate_vcn.yml --tags "create_vcn" -v
+> ansible-playbook sample_orchestrate_vcn.yml --tags "create_vcn" -vvv
 ```
 
 ### Teardown a VCN
@@ -55,8 +73,6 @@ key_file=~/.oci/oci_api_key.pem
 > ansible-playbook sample_teardown_vcn.yml --syntax-check 
 > ansible-playbook sample_teardown_vcn.yml -v
 ```
-
-## Examine the Architecture
 
 
 
