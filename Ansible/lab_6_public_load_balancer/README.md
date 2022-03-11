@@ -53,6 +53,8 @@
 
 ### Task-04: Check whether Load Balancer able to access Backend Server using module `uri - an non-oci module`
 - [x] Inputs: url/http://{{`public_load_balancer_ip_addresses[0]`.ip_address}}, body_format/json, timeout/600ms, retries/10 times, delay: 60s, until/result[status]==200
+
+## Execution of the Script
 ```shell
 # Create a complete VCN (optional, if you dont have any VCN setup in your OCI)
 > ansible-playbook ../lab_2_create_a_complete_vcn/sample_create_vcn.yml -vvv 
