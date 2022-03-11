@@ -5,50 +5,91 @@
   vars_prompt:
     - name: vcn_id
       prompt: Enter VCN OCID
-      default: "ocid1.vcn.oc1.ap-mumbai-1.amaaaaaa2br7tayak6cmmwyfteyjs4zoxjc2b5pse4zxth6mq5vkd7w4o4ea" #ansible-vcn
+      default: ocid1.vcn.oc1.ap-mumbai-1.amaaaaaa2br7tayaaimdivtjzlm5f5dsbfqithyf5subnt3apsdpc7wi6dsq
       private: no
 
-    - name: instance_subnet_id
-      prompt: Enter Subnet OCID
-      default: ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaajl6tlbvrx2gnqkbloy7kvl5rt4nguq7ltnodyogailoink3vbssq
+    - name: public_subnet_id
+      prompt: Enter Public Subnet OCID
+      default: ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaa4nwczv7lvvrkrvtc4j5oirfikwikkr7jffaeatyhbkf33ocgfqea
       private: no
 
-    - name: instance_security_list_ocid
-      prompt: Enter Security List OCID
-      default: ocid1.securitylist.oc1.ap-mumbai-1.aaaaaaaaovwroia4uzvfoeoupz76nqyqwqcawb5e3ikuxmnzx2bsu2z5vdpq
+    - name: private_subnet_id
+      prompt: Enter Private Subnet OCID
+      default: ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaaamlgyiynpw3rp6h2nvjjbqu6fnzgsxz2yhtt6qgu2bqy4tuccilq
       private: no
 
-    - name: rt_id
-      prompt: Enter Route Table OCID
-      default: ocid1.routetable.oc1.ap-mumbai-1.aaaaaaaa3zqql324mb7wftrz43edszler5z55jjg2czbynd2mzmy2jyhd2sq
+    - name: public_security_list_ocid
+      prompt: Enter Public Security List OCID
+      default: ocid1.securitylist.oc1.ap-mumbai-1.aaaaaaaa7fpowcwcza5zpbssv4jzaqwosslqwuqlnk3xgr7sg6a2zyucrv5q
+      private: no
+
+    - name: private_security_list_ocid
+      prompt: Enter Private Security List OCID
+      default: ocid1.securitylist.oc1.ap-mumbai-1.aaaaaaaaxs2z3o7jz4kieahpy2vsozaql53melxkinfvn3egml43dtmuybsa
+      private: no
+
+    - name: public_rt_id
+      prompt: Enter Public Route Table OCID
+      default: ocid1.routetable.oc1.ap-mumbai-1.aaaaaaaa56d7qitvsk4sry62xzezugbflclxc4onxzijkxjr2dapqja5tg3a
+      private: no
+
+    - name: private_rt_id
+      prompt: Enter Private Route Table OCID
+      default: ocid1.routetable.oc1.ap-mumbai-1.aaaaaaaarq2mnvfjqzyznkl2yctjv6vpllxgd2md2cxrzngm3igayrtjytta
       private: no
 
     - name: ig_id
       prompt: Enter Internet Gateway OCID
-      default: ocid1.internetgateway.oc1.ap-mumbai-1.aaaaaaaa2jrldxk42t4mk5sm3ra2ufb2lqjt3me4bitfgdhofwbuldv4fp7a
+      default: ocid1.internetgateway.oc1.ap-mumbai-1.aaaaaaaa7jxsquxks3mjkmcw4wbcadmbsllyaiurxocbaxtdwqgwyaygbbwa
+      private: no
+
+    - name: ng_id
+      prompt: Enter Nat Gateway OCID
+      default: ocid1.natgateway.oc1.ap-mumbai-1.aaaaaaaadndj2ojo3tcsw2hqkibxr4otbfmkxakvb7qtia7ivjvqncvkazvq
       private: no
 
   tasks:
-    - name: Delete the subnet
+    # Task-01: Deleting the 2x Subnets
+    - name: Deleting the Public subnet
       oci_network_subnet:
-        id: "{{ instance_subnet_id }}"
+        id: "{{ public_subnet_id }}"
+        state: absent
+    - name: Deleting the Private Subnet
+      oci_network_subnet:
+        id: "{{private_subnet_id}}"
         state: absent
 
-    - name: Delete the security list
+    # Task-02: Deleting the 2x Security Lists
+    - name: Deleting the Public Security List
       oci_network_security_list:
-        id: "{{ instance_security_list_ocid }}"
+        id: "{{ public_security_list_ocid }}"
+        state: absent
+    - name: Deleting the Private Security List
+      oci_network_security_list:
+        id: "{{private_security_list_ocid}}"
         state: absent
 
-    - name: Delete the route table
+    # Task-03: Deleting the 2x Route Tables
+    - name: Deleting the Public Route Table
       oci_network_route_table:
-        id: "{{ rt_id }}"
+        id: "{{ public_rt_id }}"
+        state: absent
+    - name: Deleting the Private Route Table
+      oci_network_route_table:
+        id: "{{private_rt_id}}"
         state: absent
 
+    # Task-04: Deleting 2x Gateways
     - name: Delete the Internet Gateway
       oci_network_internet_gateway:
         id: "{{ ig_id }}"
         state: absent
+    - name: Deleting the NatGateway
+      oci_network_nat_gateway:
+        id: "{{ng_id}}"
+        state: absent
 
+    # Task-05: Deleting the VCN, the final part
     - name: Delete the VCN
       oci_network_vcn:
         vcn_id: "{{ vcn_id }}"
