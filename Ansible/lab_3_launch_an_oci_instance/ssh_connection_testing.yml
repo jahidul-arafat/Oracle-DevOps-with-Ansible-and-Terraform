@@ -1,0 +1,49 @@
+- block:
+  # 4.1 Let the ssh open first; wait a bit
+  # and decide whether to use the connection with your supplied ssh-key or system generated ssh-key
+
+  # i. Wait a bit, let the connection open first
+  - name: Wait (upto 10 minutes) for port 22 to become open
+    wait_for:
+      port: 22
+      host: '{{ instance_public_ip }}'
+      state: started
+      delay: 10
+      timeout: 600
+    vars:
+      ansible_connection: local
+
+  # ii. Using system-generated ssh-key, if you didnt supplied the ssh key using <export>
+  - set_fact:
+      # Use "opc" user as this is an OL image
+      # Disable SSH's strict host key checking just for this one command invocation
+      ssh_command_with_generated_key: ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -i {{ssh_private_key}} opc@{{ instance_public_ip }} uname -a
+    when: "'SAMPLE_PUBLIC_SSH_KEY' not in ansible_env"
+
+  # iii. Using your own ssh-key, if you have supplied the ssh key using <export>
+  - set_fact:
+      # Use "opc" user as this is an OL image
+      # Disable SSH's strict host key checking just for this one command invocation
+      ssh_command_with_custom_key: ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" opc@{{ instance_public_ip }} uname -a
+    when: "'SAMPLE_PUBLIC_SSH_KEY' in ansible_env"
+
+  # 4.2 Attempt the ssh-connection with the newly launched instance and return the connection status response to console as debug
+  - name: Attempt a ssh connection to the newly launched instance
+    command: "{{ ssh_command_with_custom_key if 'SAMPLE_PUBLIC_SSH_KEY' in ansible_env else ssh_command_with_generated_key }}"
+    retries: 3
+    delay: 5
+    register: result
+    until: result.rc == 0
+
+  # 4.3 Print the SSH Connection Status
+  - name: Print SSH response from launched instance
+    debug:
+      msg: "SSH response from instance -> {{ result.stdout_lines }}"
+  - set_fact:
+      ssh_response_status: "{{ result.stdout_lines }}"
+  when: instance_subnet_type == "public"
+
+# Out of the Block, if instance_type is private
+- set_fact:
+    ssh_response_status: "Not tested for Private Instance"
+  when: instance_subnet_type == "private"

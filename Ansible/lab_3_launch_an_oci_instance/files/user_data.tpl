@@ -1,16 +1,13 @@
-#cloud-config
-
-# Copyright (c) 2020, 2022 Oracle and/or its affiliates.
-# This software is made available to you under the terms of the GPL 3.0 license or the Apache 2.0 license.
-# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
-# Apache License v2.0
-# See LICENSE.TXT for details.
+#cloud-config init file
 
 runcmd:
+  - echo "cloud-config init file execution begins" >> ~/test.txt
   - sudo yum install -y yum-utils
-  - sudo yum-config-manager --enable ol7_developer ol7_developer_epel
+  - sudo yum-config-manager --enable ol8_developer ol8_developer_EPEL
   - sudo yum clean all
   - sudo firewall-offline-cmd --zone=public --add-service=http
   - sudo systemctl restart firewalld
   - sudo yum install -y nginx
+  - sudo systemctl enable nginx
   - sudo systemctl start nginx
+  - echo "cloud-config init file execution ends" >> ~/test.txt

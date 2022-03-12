@@ -1,0 +1,27 @@
+# Task-01: Create a directory named ./ca_certificates to keep all the newly generated certificates
+- name: create a file named report.txt
+  file:
+    path: ./report.txt
+    state: touch
+
+# Task-02: Save all the OCI facts to host specific file
+- name: Save all facts to host specific file
+  copy:
+    content: " OCI FACTS on {{instance_name}}\n--------------------------------------------------------------\n
+    >> instance_type: {{instance_subnet_type}}\n
+    >> instance_public_ip: {{instance_public_ip}}\n
+    >> instance_private_ip: {{instance_private_ip}}\n
+    >> instance_hostname: {{instance_hostname}}\n
+    >> instance_display_name: {{instance_name}}\n
+    >> instance_id: {{instance_id}}\n\n
+
+    >> instance_shape: {{instance_shape}}\n
+    >> instance_image: {{instance_image}}\n\n
+
+    >> instance_ad: {{instance_ad}}\n
+    >> instance_compartment: {{instance_compartment}}\n
+    >> instance_subnet_id: {{instance_subnet_id}}\n\n
+
+    >> ssh_response_status: {{ssh_response_status}}
+    "
+    dest: ./report.txt

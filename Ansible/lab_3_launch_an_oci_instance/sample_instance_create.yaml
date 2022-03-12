@@ -38,38 +38,27 @@
       default: "ocid1.image.oc1.ap-mumbai-1.aaaaaaaa64semv36x5gssmswplzkuirimzoapsvd4rh3s7sbdfev6fpkd6yq"
       private: no
 
-    - name: instance_subnet_id
-      prompt: "Instance Subnet ID:[Public/Private]:"
-      default: "ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaapltjnevul4idswrxbozu32ovffo7dgmlx6kyyjr2puqpzdiyscsq"
+    - name: instance_subnet_type
+      prompt: "Where you are planning to place your instance [public/private]: "
+      default: "public"
       private: no
 
+    - name: instance_subnet_id  # oci-sandbox-vcn  # default is Public Subnet
+      prompt: "Instance Subnet ID:[Public/Private]:"
+      default: "ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaaiw4njnl74may6r4p3frgth5laqfr6kl6g52kkevolx43r2ugx7ra"
+      private: no
+
+    - name: user_data_file_location
+      prompt: "Set your user_data configuration script"
+      default: "./files/user_data.tpl"
+      private: no
 
   tasks:
-    - block: # Task-1/1.1/1.2
-      # Task-01: Generate the SSH keys of you dont supply the ssh-key for instance connectivity testing
-      # 1.1 Creating the ssh-key temp directory
-      - name: Create Ansible SSH Directory
-        file: path=./ansible_ssh state=directory
-
-      # 1.2 Generating the ssh-key in tmp directory
-      - name: generate SSH key "{{ssh_key_filename}}"
-        openssh_keypair:
-          path: "./ansible_ssh/{{ssh_key_filename}}"
-          type: rsa
-          size: 4096
-          state: present
-          force: no
-      - set_fact:
-          ssh_public_key: "./ansible_ssh/{{ssh_key_filename}}.pub"
-          ssh_private_key: "./ansible_ssh/{{ssh_key_filename}}"
-      when: "'SAMPLE_PUBLIC_SSH_KEY' not in ansible_env"
-
-    # Set the system ssh key based on whether user passed the ssh-key, or the system generated itself as above
-    - set_fact:
-        SSH_AUTHORIZED_KEYS: "{{ lookup('env', 'SAMPLE_PUBLIC_SSH_KEY') if 'SAMPLE_PUBLIC_SSH_KEY' in ansible_env else lookup('file',  ssh_public_key ) }}"
+    # Task-01: Generate the SSH keys of you dont supply the ssh-key for instance connectivity testing
+    - import_tasks: ssl_cert_generator.yml
 
     # Task-02: Launch a Compute Instance in Oracle Cloud
-    # 2.1 Launching the instance with user input
+    # 2.1 Launching the instance with user input in Public/Private Subnet
     - name: Launch an instance
       oci_compute_instance:
         availability_domain: "{{ instance_ad }}"
@@ -78,106 +67,56 @@
         image_id: "{{ instance_image }}"
         shape: "{{ instance_shape }}"
         create_vnic_details:
-            assign_public_ip: True
+            #assign_public_ip: True # Defaults to whether the subnet is public or private. Better not to set any value
             hostname_label: "{{ instance_hostname }}"
             subnet_id: "{{ instance_subnet_id }}"
         metadata:
             ssh_authorized_keys: "{{ SSH_AUTHORIZED_KEYS }}"
             # install nginx webserver. Load the script from files/user_data.tpl
-            user_data: "{{ lookup('file', '{{ playbook_dir}}/files/user_data.tpl')| b64encode}}"
+            # Note: execution of user_data.tpl as cloud-init script might take a while and the nginx server might be alive after 5 mins.
+            # So, have patience. Even if the ansible script complete its execution, the user_data.tpl might still be running underneath.
+            user_data: "{{ lookup('file', user_data_file_location)| b64encode}}"
       register: result
+
 
     # 2.2 Print the instance details in console as debug
     - name: Print instance details
       debug:
         msg: "Launched a new instance {{ result }}"
     - set_fact:
-        instance_id: "{{result.instance.id }}"                  # after launch variable
+        instance_id: "{{result.instance.id }}"
 
-    # 2.3 Fetch the Public IP of the instance
+    # Task-03: Fetch the Public and Private IP of the instance
     # This is a 3 step process
-    # i. Get the VNIC attachment details of the instance
-    # ii. Get the vnic_id of that vnic_attachment
+    # i.   Get the VNIC attachment details of the instance
+    # ii.  Get the vnic_id of that vnic_attachment
     # iii. Fetch the public ip of that vnic_id with which your instance is attached
 
-    # i. Get the VNIC attachment details of the instance
+    # 3.1. Get the VNIC attachment details of the instance
     - name: Get the VNIC attachment details of instance
       oci_compute_vnic_attachment_facts:
         compartment_id: "{{ instance_compartment }}"
-        instance_id: "{{ instance_id }}"                        # after launch variable
+        instance_id: "{{ instance_id }}"
       register: result
 
-    # ii. Get the vnic_id of that vnic_attachment
+    # 3.2 Get the vnic_id of that vnic_attachment
     - name: Get details of the VNIC
       oci_network_vnic_facts:
-        id: "{{ result.vnic_attachments[0].vnic_id }}"          # after launch variable
+        id: "{{ result.vnic_attachments[0].vnic_id }}"
       register: result
-    - set_fact:
-        instance_public_ip: "{{result.vnic.public_ip}}"         # after launch variable
 
-    # iii. Fetch the public ip of that vnic_id with which your instance is attached
-    - name: Print the public ip of the newly launched instance
+    - set_fact:
+        instance_private_ip: "{{result.vnic.private_ip}}"
+        instance_public_ip: "{{result.vnic.public_ip}}" # if a private instance, then <instance_public_ip> will be <null>
+
+    # 3.3 Fetch the private and public ip of that vnic_id with which your instance is attached
+    - name: Print the private and public ip of the newly launched instance
       debug:
-        msg: "Public IP of launched instance {{ instance_public_ip }}"
+        msg: "IP of launched instance-> Private IP: {{ instance_private_ip }}, Public IP: {{instance_public_ip}}"
 
-    # Task-03: SSH Connection Testing
-    # 3.1 Let the ssh open first; wait a bit
-    # and decide whether to use the connection with your supplied ssh-key or system generated ssh-key
+    # Task-04: SSH Connection Testing
+    - import_tasks: ssh_connection_testing.yml
 
-    # i. Wait a bit, let the connection open first
-    - name: Wait (upto 10 minutes) for port 22 to become open
-      wait_for:
-        port: 22
-        host: '{{ instance_public_ip }}'
-        state: started
-        delay: 10
-        timeout: 600
-      vars:
-        ansible_connection: local
-    # ii. Using system-generated ssh-key
-    - set_fact:
-        # Use "opc" user as this is an OL image
-        # Disable SSH's strict host key checking just for this one command invocation
-        ssh_command_with_generated_key: ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -i {{ssh_private_key}} opc@{{ instance_public_ip }} uname -a
-      when: "'SAMPLE_PUBLIC_SSH_KEY' not in ansible_env"
-    # iii. Using your own ssh-key
-    - set_fact:
-        # Use "opc" user as this is an OL image
-        # Disable SSH's strict host key checking just for this one command invocation
-        ssh_command_with_custom_key: ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" opc@{{ instance_public_ip }} uname -a
-      when: "'SAMPLE_PUBLIC_SSH_KEY' in ansible_env"
-
-    # 3.2 Attempt the ssh-connection with the newly launched instance and return the connection status response to console as debug
-    - name: Attempt a ssh connection to the newly launched instance
-      command: "{{ ssh_command_with_custom_key if 'SAMPLE_PUBLIC_SSH_KEY' in ansible_env else ssh_command_with_generated_key }}"
-      retries: 3
-      delay: 5
-      register: result
-      until: result.rc == 0
-
-    - name: Print SSH response from launched instance
-      debug:
-        msg: "SSH response from instance -> {{ result.stdout_lines }}"
-    - set_fact:
-        ssh_response_status: "{{ result.stdout_lines }}"
-
-    # Task 04: Save all facts to host specific file
-    - name: Save all facts to host specific file
-      copy:
-        content: " OCI FACTS on {{instance_name}}\n**Ansible Playbook by Jahidul Arafat\n------------------------------------------------------------------------\n
-        >> instance_public_ip: {{instance_public_ip}}\n
-        >> instance_hostname: {{instance_hostname}}\n
-        >> instance_display_name: {{instance_name}}\n
-        >> instance_id: {{instance_id}}\n\n
-
-        >> instance_shape: {{instance_shape}}\n
-        >> instance_image: {{instance_image}}\n\n
-
-        >> instance_ad: {{instance_ad}}\n
-        >> instance_compartment: {{instance_compartment}}\n
-        >> instance_subnet_id: {{instance_subnet_id}}\n\n
-
-        >> ssh_response_status: {{ssh_response_status}}
-        "
-        dest: ./oci_instance_facts_details.txt
+    # Task 05: Save all facts to host specific file
+    - import_tasks: report_generator.yml
 

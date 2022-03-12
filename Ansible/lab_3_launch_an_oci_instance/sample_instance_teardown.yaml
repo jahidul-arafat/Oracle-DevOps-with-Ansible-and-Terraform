@@ -5,7 +5,7 @@
 
   vars_prompt:
     - name: instance_id
-      prompt: "Enter Instance ID [Check ./oci_instance_facts_details.txt]: "
+      prompt: "Enter Instance ID [Check ./report.txt]: "
       private: no
   tasks:
     - name: Terminate the instance
