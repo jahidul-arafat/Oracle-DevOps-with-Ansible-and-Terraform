@@ -1,12 +1,11 @@
 ---
-- name: Create a Public Load Balancer instance with either Public/Private Instances and Print the details
+- name: Create a Private Load Balancer instance with either Public/Private Instances and Print the details
   hosts: localhost
   collections:
     - oracle.oci
 
   vars:
     http_port: 80
-    https_port: 443
 
   vars_prompt:
     # Set Load Balancer: Name, Shape, Backend Set (BS) name, BS policy
@@ -16,7 +15,7 @@
       private: no
     - name: lb_shape
       prompt: "Choose LoadBalancer Shape:"
-      default: "100Mbps"
+      default: "10Mbps"
       private: no
     - name: lb_backend_set_name
       prompt: "Enter LB Backend Set Name:"
@@ -37,35 +36,13 @@
       default: "10.0.0.244"
       private: no
 
-    # Import the Root-CA cert, remote_client's private key and signed CSR
-    - name: root_ca_certificate
-      prompt: "Enter ROOT CA Certificate"
-      default: "./ca_certificates/ca.crt"
-      private: no
-    - name: remote_client_private_key
-      prompt: "Enter the Remote-Client's Private Key"
-      default: "./ca_certificates/ansibleclient.key"
-      private: no
-    - name: remote_client_public_certificate
-      prompt: "Enter the Remote-Client's Signed CSR returned from ROOT-CA:"
-      default: "./ca_certificates/ansibleclient.crt"
-      private: no
-
-    # Set the name for the certificate which includes (ca.crt, ansibleclient.key and ansibleclient.crt) and is used in the HTTPS listner
-    - name: lb_certificate_name
-      prompt: "Enter a sample certificate name which will be used later for references in HTTPS Listener"
-      default: "ansible-sample-create-lb-cert-ls"
-      private: no
 
     # Set the http and https listener name
     - name: http_listener_name
       prompt: "Set HTTP Listener name"
       default: "ansible-sample-create-lb-http-listener"
       private: no
-    - name: https_listener_name
-      prompt: "Set HTTPS Listener name"
-      default: "ansible-sample-create-lb-https-listener"
-      private: no
+
 
     # Set the Compartment of Operation i.e. sandbox
     - name: compartment_id
@@ -77,29 +54,20 @@
       default: "ocid1.tenancy.oc1..aaaaaaaanbynfzds6esghootofhfrbnahj3aeihhd7e3ghrn37cf452ywo3q"
       private: no
 
-    - name: subnet_id_ad1 #oci-sandbox-vcn Public Subnet 10.0.0.0/24
-      prompt: "Enter Your Subnet OCID [Public/Private]:"  #in Mumbai, there is only one AD. So even if there is a single AD, two different FDs can ensure fault tolerance
-      default: "ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaaiw4njnl74may6r4p3frgth5laqfr6kl6g52kkevolx43r2ugx7ra"
+    - name: subnet_id_ad1 #oci-sandbox-vcn Private Subnet 10.0.1.0/24
+      prompt: "Enter Your Subnet OCID [Private]:"  #in Mumbai, there is only one AD. So even if there is a single AD, two different FDs can ensure fault tolerance
+      default: "ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaabdv7xrearojddtrymajxhcgcdhpqbopwfi6i4h3adaro2537ersa"
       private: no
 
   tasks:
     - block:
-      # Setup the Root-CA certificate, and remote-client certificate and csr
-      - import_tasks: setup_root_ca.yaml
-
-      # Prerequisite: Read the contents of the certificates and keys
-      - set_fact:
-          SAMPLE_CA_CERTIFICATE: "{{lookup('file',root_ca_certificate)}}"
-          SAMPLE_PRIVATE_KEY: "{{lookup('file', remote_client_private_key)}}"
-          SAMPLE_PUBLIC_CERTIFICATE: "{{lookup('file',remote_client_public_certificate)}}"
-
       # Task-01: Create a Public Load Balancer.   << Error is creating the task. Service Limit + Internal Server Error.
       # Debug the Error <<----------- [unsolved]
       # Inputs: compt_ocid, lb_name, lb_shape, public_subnet_ocid
       # return: lb.id lb.ip
-      - name: Create an Internet facing Load Balancer
+      - name: Create a Private Load Balancer
         oci_loadbalancer_load_balancer:
-          is_private: false # defaull is: null;
+          is_private: yes # defaull is: null; If True, then the load_balancer will be internal to VCN and will not have any public_ip assigned
           compartment_id: "{{compartment_id}}"
           name: "{{lb_name}}"
           shape_name: "{{lb_shape}}"
@@ -110,8 +78,8 @@
       - debug:
           msg: "Load Balancer Details: {{result.load_balancer}}"
       - set_fact:
-          public_load_balancer_id: "{{result.load_balancer.id}}"
-          public_load_balancer_ip_addresses: "{{result.load_balancer.ip_addresses}}"  # this is a LIST
+          private_load_balancer_id: "{{result.load_balancer.id}}"
+          private_load_balancer_ip_addresses: "{{result.load_balancer.ip_addresses}}"  # this is a LIST
 
       # Task-02: Create Backend set
       # 3x tasks
@@ -119,7 +87,7 @@
       # input: lb_id, bs_name, bs_policy: RR, health_checker: {protocol, port, interval, timeout, retries, return_code, url_path, regex}
       - name: Create Backend Set
         oci_loadbalancer_backend_set:
-          load_balancer_id: "{{public_load_balancer_id}}"
+          load_balancer_id: "{{private_load_balancer_id}}"
           name: "{{lb_backend_set_name}}"
           policy: "{{lb_backend_set_policy}}" #round_robin
           health_checker:
@@ -137,7 +105,7 @@
       # A. Add Backend server 01 into the Backend Set
       - name: Add Backend Server 01 into the Backend Set
         oci_loadbalancer_backend:
-          load_balancer_id: "{{public_load_balancer_id}}"
+          load_balancer_id: "{{private_load_balancer_id}}"
           backend_set_name: "{{lb_backend_set_name}}"
           ip_address: "{{backend_server_one_private_ip}}"
           port: "{{http_port}}"
@@ -150,7 +118,7 @@
       # B. Add Backend Server 02 into the Backend Set
       - name: Add Backend Server 02 into the Backend Set
         oci_loadbalancer_backend:
-          load_balancer_id: "{{public_load_balancer_id}}"
+          load_balancer_id: "{{private_load_balancer_id}}"
           backend_set_name: "{{lb_backend_set_name}}"
           ip_address: "{{backend_server_two_private_ip}}"
           port: "{{http_port}}"
@@ -161,20 +129,10 @@
           state: present
 
       # Task-03: Configure Listener
-      # 3.1 Load Certificates and Private Key for Listener. Certificate/Key contents will be loaded as string
-      - name: Load Certificates for Listener
-        oci_loadbalancer_certificate:
-          load_balancer_id: "{{public_load_balancer_id}}"
-          certificate_name: "{{lb_certificate_name}}"  #<<<----
-          ca_certificate: "{{SAMPLE_CA_CERTIFICATE}}"
-          private_key: "{{SAMPLE_PRIVATE_KEY}}"
-          public_certificate: "{{SAMPLE_PUBLIC_CERTIFICATE}}"
-          state: present
-
-      # 3.2 Create Listener for HTTP traffic
+      # 3.1 Create Listener for HTTP traffic
       - name: Create Listener for HTTP traffic
         oci_loadbalancer_listener:
-          load_balancer_id: "{{public_load_balancer_id}}"
+          load_balancer_id: "{{private_load_balancer_id}}"
           name: "{{http_listener_name}}"
           default_backend_set_name: "{{lb_backend_set_name}}"
           port: "{{http_port}}"
@@ -183,36 +141,10 @@
             idle_timeout: 300
           state: present
 
-      # 3.3 Create Listener for HTTPS traffic
-      - name: Create Listener for HTTPS traffic
-        oci_loadbalancer_listener:
-          load_balancer_id: "{{public_load_balancer_id}}"
-          name: "{{https_listener_name}}"
-          default_backend_set_name: "{{lb_backend_set_name}}"
-          port: "{{https_port}}"
-          protocol: "HTTP"  # protocol is not HTTPS. I set HTTPS earlier and it throws an error. So, better set HTTP
-          ssl_configuration:
-            certificate_name: "{{lb_certificate_name}}" #<<<----
-            verify_peer_certificate: False    # if TRUE, then Load Balancer will verify Peer Certificate # Must be `True` in production environment
-          state: present
-
-      # Task-04: Check whether Load Balancer able to access Backend Server
-      - name: Check whether Load Balancer able to access Backend Server
-        uri:
-          url: "http://{{public_load_balancer_ip_addresses[0].ip_address}}/"
-          body_format: json
-          timeout: 600
-        register: result
-        retries: 10
-        delay: 60
-        until: result['status']|default(0) == 200
-      - debug:
-          msg: "Load Balancer IP Address details: {{public_load_balancer_ip_addresses}}"
-
-      # Task-05: Get the Load Balancer OCID, which we will use later to terminate the LB
+      # Task-04: Get the Load Balancer OCID, which we will use later to terminate the LB
       - name: Print the Load Balancer OCID
         debug:
-          msg: "Load Balancer OCID: {{public_load_balancer_id}}"
+          msg: "Load Balancer OCID: {{private_load_balancer_id}} and Private IP: {{private_load_balancer_ip_addresses[0].ip_address}}"
 
 
 

@@ -1,0 +1,21 @@
+- block: # Task-1/1.1/1.2
+  # 1.1 Creating the ssh-key temp directory
+  - name: Create Ansible SSH Directory
+    file: path=./ansible_ssh state=directory
+
+  # 1.2 Generating the ssh-key in tmp directory
+  - name: generate SSH key "{{ssh_key_filename}}"
+    openssh_keypair:
+      path: "./ansible_ssh/{{ssh_key_filename}}"
+      type: rsa
+      size: 4096
+      state: present
+      force: no
+  - set_fact:
+      ssh_public_key: "./ansible_ssh/{{ssh_key_filename}}.pub"
+      ssh_private_key: "./ansible_ssh/{{ssh_key_filename}}"
+  when: "'SAMPLE_PUBLIC_SSH_KEY' not in ansible_env"
+
+# Set the system ssh key based on whether user passed the ssh-key, or the system generated itself as above
+- set_fact:
+    SSH_AUTHORIZED_KEYS: "{{ lookup('env', 'SAMPLE_PUBLIC_SSH_KEY') if 'SAMPLE_PUBLIC_SSH_KEY' in ansible_env else lookup('file',  ssh_public_key ) }}"

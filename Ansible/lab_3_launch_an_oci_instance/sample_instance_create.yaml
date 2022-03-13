@@ -116,6 +116,7 @@
 
     # Task-04: SSH Connection Testing
     - import_tasks: ssh_connection_testing.yml
+      when: instance_subnet_type == "public"
 
     # Task 05: Save all facts to host specific file
     - import_tasks: report_generator.yml

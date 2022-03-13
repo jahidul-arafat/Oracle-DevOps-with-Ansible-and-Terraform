@@ -1,0 +1,145 @@
+---
+- name: Create a compute instance pool and launch instances
+  hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars:
+    ssh_key_filename: id_rsa_myproject
+    json_report: ./report.json
+    ssh_response_status: null
+
+  vars_prompt: # 8x
+    # Select the Compartment and AD
+    - name: instance_compartment
+      prompt: "Enter Your COMPARTMENT OCID:"
+      default: "ocid1.compartment.oc1..aaaaaaaa5hplc4q67l76kzeygvcbbu73da3kxhndhogtfvxgwtpd2xzayecq" # sandbox compartment
+      private: no
+
+    - name: instance_ad
+      prompt: "Enter AD Name:"
+      default: "oAOj:AP-MUMBAI-1-AD-1"
+      private: no
+
+    # Select instance image and shape
+    - name: instance_image
+      prompt: "Enter Instance Image ID: [Oracle-Linux-8.5-2022.01.24-0]"
+      default: "ocid1.image.oc1.ap-mumbai-1.aaaaaaaa64semv36x5gssmswplzkuirimzoapsvd4rh3s7sbdfev6fpkd6yq"
+      private: no
+
+    - name: instance_shape
+      prompt: "Enter Instance Shape:"
+      default: "VM.Standard2.1"
+      private: no
+
+    - name: instance_display_name
+      prompt: "Set your instance Display Name:"
+      default: "sample-instance-pool-instance"
+      private: no
+
+    # Input Section-04: VNIC Details required
+    - name: instance_subnet_type
+      prompt: "Instance Subnet Type [public/private]:"
+      default: "public"
+      private: no
+
+    - name: instance_subnet_id  #oci-sandbox-vcn # public-subnet by default
+      prompt: "Instance Subnet ID:[Public/Private]:"
+      default: "ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaaiw4njnl74may6r4p3frgth5laqfr6kl6g52kkevolx43r2ugx7ra"
+      private: no
+
+    # Input Section-05: Set the instance configuration and instance pool name
+    - name: instance_pool_configuration_name
+      prompt: "Set Instance Pool Configuration Name"
+      default: "sample-instance-pool-configuration"
+      private: no
+
+    - name: instance_pool_name
+      prompt: "Set Instance Pool Name"
+      default: "sample-create-instance-pool"
+      private: no
+
+    # Cloud-init
+    - name: user_data_file_location
+      prompt: "Set your user_data configuration script"
+      default: "./files/user_data.tpl"
+      private: no
+
+  tasks:
+    # Task-01: Generate the SSH keys (if you dont supply the ssh-key) for instance connectivity testing
+    - import_tasks: ssl_cert_generator.yml
+
+    #=======================================================================================================================
+
+    # Task-02: Create a new basic compute instance configuration that has launch_details and VNIC configuration
+    - import_tasks: sample_instance_configuration.yml
+
+    #=======================================================================================================================
+
+    # Task-03: Create a new INSTANCE POOL from INSTANCE CONFIGURATION
+    - name: Create a new instance pool from instance configuration
+      oci_compute_management_instance_pool:
+        compartment_id: "{{instance_compartment}}"
+        name: "{{instance_pool_name}}"
+        instance_configuration_id: "{{instance_configuration_id}}"
+        size: 2 # launch 2 instances when pool is created
+        placement_configurations:  # dict # use '-' infront of ad as placement_configurations is a dict, not a list  # Error: 'placement_configurations' is of type <class 'dict'> and we were unable to convert to list: <class 'dict'> cannot be converted to a list"
+          - availability_domain: "{{instance_ad}}"
+            primary_subnet_id: "{{instance_subnet_id}}"
+      register: result
+    - set_fact:
+        instance_pool_id: "{{result.instance_pool.id}}"                         # Derived Value. Will be used NEXT-->>to get instances in the instance_pool)
+
+    - name: Print Instance Pool Details
+      debug:
+        msg: "Created a new Instance pool {{result.instance_pool}}"
+
+    #==================================================================================================================
+    # Task-04: Get Instance details in the instance pool, print the details and get the first instance from the pool
+    - name: Get instance details of instances in the instance pool
+      oci_compute_management_instance_pool_instance_facts:
+        compartment_id: "{{instance_compartment}}"
+        id: "{{instance_pool_id}}"                                             # instance_pool ID
+      register: result
+    - set_fact:
+        instance_pool_instances: "{{result.instance_pool_instances}}"          # Derived Value. Will be used NEXT-->>(to fetch the first instance from the pool)
+
+    - name: Print details of Instances in the new instance pool
+      debug:
+        msg: "Instances in Instance Pool {{instance_pool_id}} are {{instance_pool_instances}}"
+
+    - name: Get the first instance from the pool
+      set_fact:
+        instance_id: "{{instance_pool_instances[0].id}}" # 0--> first instance  # Derived Value. Will be used NEXT-->>(to fetch the public ip for ssh connectivity testing)
+
+    #==================================================================================================================
+    # Task-05: Fetch the Public IP for that Instance from VNIC attachments
+    - name: Get the VNIC attachment details of that instance to fetch the public_ip   # purpose: For later ssh connection testing
+      oci_compute_vnic_attachment_facts:
+        compartment_id: "{{instance_compartment}}"
+        instance_id: "{{instance_id}}"
+      register: result
+    - set_fact:
+        vnic_attachments: "{{result.vnic_attachments}}"                                    # could be a number of vnic attachments
+
+    - name: Get the details of VNIC of that VNIC attachment
+      oci_network_vnic_facts:
+        id: "{{vnic_attachments[0].vnic_id }}"   # vnic_id                           # fetch the primary/first VNIC attachment id from a list
+      register: result
+    - set_fact:
+        instance_public_ip: "{{result.vnic.public_ip}}"                             # Derived Value. Will be used next-->>(for ssh connectivity testing with public_ip)
+        instance_private_ip: "{{result.vnic.private_ip}}"
+    - name: Print the Public and Private IP of the newly launched instance
+      debug:
+        msg: "IP of the launched instance: Public IP-> {{instance_public_ip}}, Private IP-> {{instance_private_ip}}"
+    #==================================================================================================================
+
+    # Task-06: SSH Connection Testing
+    - import_tasks: ssh_connection_testing.yml
+      when: instance_subnet_type == "public"
+
+
+    #==================================================================================================================
+    # Task-07: Generating Report
+    - import_tasks: report.yml
+

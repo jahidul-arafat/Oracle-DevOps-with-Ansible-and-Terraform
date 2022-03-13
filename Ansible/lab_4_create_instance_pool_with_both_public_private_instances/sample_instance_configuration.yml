@@ -1,0 +1,28 @@
+- name: Create a new basic compute instance configuration that has launch_details and VNIC configuration
+  oci_compute_management_instance_configuration:
+    compartment_id: "{{instance_compartment}}"
+    name: "{{instance_pool_configuration_name}}"
+    instance_details:                               # instance_type+ launch_details
+      instance_type: "compute"
+      launch_details:                               # comp_ocid+create_vnic+display_name+shape+image+ssh_key
+        compartment_id: "{{instance_compartment}}"
+        create_vnic_details:
+          #assign_public_ip: True # Dont turn it on. By default, based on your subnet, public_ip will be assigned or not.
+          display_name: "{{instance_display_name}}"
+          subnet_id: "{{ instance_subnet_id }}"
+        display_name: "{{instance_display_name}}"
+        shape: "{{instance_shape}}"
+        source_details:
+          source_type: "image"
+          image_id: "{{instance_image}}"
+        metadata:
+          ssh_authorized_keys: "{{SSH_AUTHORIZED_KEYS}}"
+          # install nginx webserver. Load the script from files/user_data.tpl
+          user_data: "{{ lookup('file', user_data_file_location)| b64encode}}"
+  register: result
+- set_fact:
+    instance_configuration_id: "{{result.instance_configuration.id}}"       # Derived Value. Will be used NEXT-->>(instance_pool)
+
+- name: Print the Instance Configuration Details
+  debug:
+    msg: "Created a new Instance Configuration: {{result.instance_configuration}}"
