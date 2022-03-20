@@ -223,13 +223,13 @@ k_consumer_sysdef_cg(){
   then
     echo "Consumer Group Fetching data from beginning"
     $KAFKA_HOME/bin/kafka-console-consumer.sh \
-      --bootstrap-serevr $BROKER \
+      --bootstrap-server $BROKER \
       --topic $TOPIC_NAME \
       --from-beginning
   else
     echo "By default, new consumer grouip will not fetch older messages that got pushed to the Kafka topic/queue before defining consumer group"
     $KAFKA_HOME/bin/kafka-console-consumer.sh \
-      --bootstrap-serevr $BROKER \
+      --bootstrap-server $BROKER \
       --topic $TOPIC_NAME
 
   fi
@@ -256,14 +256,14 @@ k_consumer_userdef_cg(){
   then
     echo "Consumer Group Fetching data from beginning"
     $KAFKA_HOME/bin/kafka-console-consumer.sh \
-      --bootstrap-serevr $BROKER \
+      --bootstrap-server $BROKER \
       --consumer-property group.id=$CG_NAME \
       --topic $TOPIC_NAME \
       --from-beginning
   else
     echo "By default, new consumer group will not fetch older messages that got pushed to the Kafka topic/queue before defining consumer group"
     $KAFKA_HOME/bin/kafka-console-consumer.sh \
-      --bootstrap-serevr $BROKER \
+      --bootstrap-server $BROKER \
       --consumer-property group.id=$CG_NAME \
       --topic $TOPIC_NAME
   fi
@@ -294,6 +294,7 @@ k_cg_describe(){
 # in Terminal-1, keep the <producer> alive
 # check the active member now. If you find an active member
 # if you terminate <producer>, you might not find any active members
+# Ref: https://dbmstutorials.com/kafka/kafka-consumer-groups.html
 
 k_cg_active_members(){
   read -p "Enter BROKER Name: [localhost:9092] " BROKER
@@ -322,6 +323,106 @@ k_cg_active_members(){
       --members
   fi
 }
+
+#================================================================================================================
+# Step-4: Kafka Broker
+# Basically, a broker in Kafka is modeled as KafkaServer, which hosts topics.
+# Here, given topics are always partitioned across brokers
+# Ref: https://data-flair.training/blogs/kafka-broker/
+
+#4.1 Get the details of a Kafka broker
+k_broker_describe(){
+  read -p "Enter BROKER Name: [localhost:9092] " BROKER
+  BROKER=${BROKER:-$DEFAULT_BROKER}
+
+  read -p "Enter Your Broker Entity ID(alias Name) [0,1 etc In Numeric Format]: " BROKER_ENTITY_ID
+  BROKER_ENTITY_ID=${BROKER_ENTITY_ID:-0}
+
+  if [[ $BROKER_ENTITY_ID -eq 0 ]]
+  then
+    echo "Fetching the details of Current Dynamic Broker Configs"
+  fi
+
+  $KAFKA_HOME/bin/kafka-configs.sh \
+    --bootstrap-server $BROKER \
+    --entity-type brokers \
+    --entity-name $BROKER_ENTITY_ID \
+    --describe
+}
+
+
+# 4.2 Altering Kafka Broker- Adding a Configuration in a Kafka Broker
+k_broker_alter_log_cleaner_bg_threads(){
+  read -p "Enter BROKER Name: [localhost:9092] " BROKER
+  BROKER=${BROKER:-$DEFAULT_BROKER}
+
+  read -p "Do you want to alter all the existing Broker's Configuration in the cluster: [0-No/Just a Single one, 1-Yes/All]" ALL_BROKER
+  ALL_BROKER=${ALL_BROKER:-0}
+
+  read -p "How Many Log Cleaner Background Threads you want to have [1-100]: " LOG_CLEANER_BG_THREADS
+  LOG_CLEANER_BG_THREADS=${LOG_CLEANER_BG_THREADS:-2}
+
+  if [[ $ALL_BROKER -lt 1 ]] # a single broker
+  then
+    read -p "Enter Your Broker Entity ID(alias Name) [0,1 etc In Numeric Format]: " BROKER_ENTITY_ID
+    $KAFKA_HOME/bin/kafka-configs.sh \
+      --bootstrap-server $BROKER \
+      --entity-type brokers \
+      --entity-name $BROKER_ENTITY_ID \
+      --alter \
+      --add-config log.cleaner.threads=$LOG_CLEANER_BG_THREADS
+  else  # All Broker
+    $KAFKA_HOME/bin/kafka-configs.sh \
+      --bootstrap-server $BROKER \
+      --entity-type brokers \
+      --alter \
+      --add-config log.cleaner.threads=$LOG_CLEANER_BG_THREADS
+  fi
+
+  read -p "Do you want this configuration remains [0-No, 1-Yes]: " KEEP_CONFIGURATION
+  KEEP_CONFIGURATION=${KEEP_CONFIGURATION:-1}
+  if [[ $KEEP_CONFIGURATION -lt 1 ]] # 0 # No, Delete the current configuration
+  then
+    echo "Cleaning the Newly Created Configuration"
+    k_broker_del_config
+  fi
+}
+
+# 4.3 Delete a broker configuration
+k_broker_del_config(){
+  read -p "Enter BROKER Name: [localhost:9092] " BROKER
+  BROKER=${BROKER:-$DEFAULT_BROKER}
+
+  read -p "Do you want to remove the configuration for all Brokers in the cluster: [0-No/Just a single broker, 1-Yes/All]: " ALL_BROKER
+  ALL_BROKER=${ALL_BROKER:-0}
+
+  read -p "Enter the Configuration Name you want to delete: " CONFIG_NAME
+  CONFIG_NAME=${CONFIG_NAME:-log.cleaner.threads}
+
+  if [[ $ALL_BROKER -lt 1 ]] # 0 # A Single Broker
+  then
+    read -p "Enter Your Broker Entity ID (alias Name) [0,1 etc In Numeric Format]: " BROKER_ENTITY_ID
+    $KAFKA_HOME/bin/kafka-configs.sh \
+      --bootstrap-server $BROKER \
+      --entity-type brokers \
+      --entity-name $BROKER_ENTITY_ID \
+      --alter \
+      --delete-config $CONFIG_NAME
+  else # 1 # All Brokers
+    $KAFKA_HOME/bin/kafka-configs.sh \
+      --bootstrap-server $BROKER \
+      --entity-type brokers \
+      --alter \
+      --delete-config $CONFIG_NAME
+  fi
+}
+
+# 4.4 Restart Kafka Broker
+k_broker_restart(){
+  echo "Restarting Kafka to make the effect of configuration changes ..."
+  sudo systemctl restart kafka
+}
+
 
 
 
