@@ -161,7 +161,7 @@
       oci_network_nat_gateway:
         compartment_id: "{{ instance_compartment }}"
         vcn_id: "{{ vcn_id }}"
-        display_name: ng_name
+        display_name: "{{ng_name}}"
       register: result
     - set_fact:
         ng_id: "{{result.nat_gateway.id}}"
