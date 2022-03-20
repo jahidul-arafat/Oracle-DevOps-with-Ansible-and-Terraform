@@ -31,10 +31,6 @@ in that `stores data for a period of time`.
 The storage of data `persistently` allows for `re-playing` of the data, 
 as well as `integration` with batch-systems like `Hadoop` or `Spark`.**
 
----
-
----
----
 ## B. ZooKeeper: A short Node
 ### Q1. Why removing ZooKeeper from kafka?
 ### Q2. Can Kafka run without ZooKeeper?
@@ -71,31 +67,31 @@ Check the setup guidelines [here](setup_kafka_in_oracle_server.md)
 ## 2. Let's Play with Kafka and JA
 Here I have developed a Kafka alias script to make your kafka command line operations easy.
 ### 2.1 Kafka Topic
--[x] `k_topicList` : List all existing Kafka Topics
--[x] `k_topic_create`: Create the topic only if it doesnt exist
--[x] `k_topic_alter_partition`: Increase the Number of Kafka Topic Partitions
--[x] `k_topic_delete`: Delete a Kafka Topic
--[x] `k_topic_describe`: Describe a topic
--[x] `k_topic_get_all_msg` : List all messages in a Kafka Topic
--[x] `k_topic_purge`: Temporarily update the retention time on the topic to one second. 
+- [x] `k_topicList` : List all existing Kafka Topics
+- [x] `k_topic_create`: Create the topic only if it doesnt exist
+- [x] `k_topic_alter_partition`: Increase the Number of Kafka Topic Partitions
+- [x] `k_topic_delete`: Delete a Kafka Topic
+- [x] `k_topic_describe`: Describe a topic
+- [x] `k_topic_get_all_msg` : List all messages in a Kafka Topic
+- [x] `k_topic_purge`: Temporarily update the retention time on the topic to one second. 
 Default retention time of Kafka topic is 168 hours, i.e. 7 days
--[x] `k_topic_purge_del_config`: Once purged, restore the previous retention.ms value.
--[x] `k_topic_del_all_mgs`: Delete all Messages from a Kafka Topic
+- [x] `k_topic_purge_del_config`: Once purged, restore the previous retention.ms value.
+- [x] `k_topic_del_all_mgs`: Delete all Messages from a Kafka Topic
 
 ### 2.2 Kafka Producer
--[x] `k_producer`: Create a Kafka Console Producer publishing message/data to a specific topic
+- [x] `k_producer`: Create a Kafka Console Producer publishing message/data to a specific topic
 
 ### 2.3 Kafka Consumer and Consumer Group
--[x] `k_consumer`: Create a Kafka Console Consumer consuming message/data from a specific topic with system defined consumer group name
--[x] `k_cg_list` : List all consumer groups across all topics
--[x] `k_consumer_sysdef_cg` : Create a Kafka Console Consumer consuming message/data from a specific topic with system defined consumer group name
--[x] `k_consumer_userdef_cg`: Create a Kafka Console Consumer consuming message/data from a specific topic with user defined consumer group name
--[x] `k_cg_describe`: Get the details of a Specific Consumer Group. This will help you to get an insight of which topics are associated with this consumer group.
+- [x] `k_consumer`: Create a Kafka Console Consumer consuming message/data from a specific topic with system defined consumer group name
+- [x] `k_cg_list` : List all consumer groups across all topics
+- [x] `k_consumer_sysdef_cg` : Create a Kafka Console Consumer consuming message/data from a specific topic with system defined consumer group name
+- [x] `k_consumer_userdef_cg`: Create a Kafka Console Consumer consuming message/data from a specific topic with user defined consumer group name
+- [x] `k_cg_describe`: Get the details of a Specific Consumer Group. This will help you to get an insight of which topics are associated with this consumer group.
 i.e. multiple topics could be using the same consumer group
--[x] `k_cg_active_members` : Get the list of all Active members in the Consumer Group
+- [x] `k_cg_active_members` : Get the list of all Active members in the Consumer Group
 
 ### 2.4 Kafka Broker
--[x] `k_broker_describe` : Get the details of a Kafka broker
--[x] `k_broker_alter_log_cleaner_bg_threads` : Altering Kafka Broker- Adding a Configuration in a Kafka Broker
--[x] `k_broker_del_config` : Delete a broker configuration
--[x] `k_broker_restart` : Restart Kafka Broker
+- [x] `k_broker_describe` : Get the details of a Kafka broker
+- [x] `k_broker_alter_log_cleaner_bg_threads` : Altering Kafka Broker- Adding a Configuration in a Kafka Broker
+- [x] `k_broker_del_config` : Delete a broker configuration
+- [x] `k_broker_restart` : Restart Kafka Broker
