@@ -1,5 +1,14 @@
 #====================================================================================================================
-# Step-0: Setting up the Provider "OCI"
+# Step-0.0: for terraform itself which collection/module to use
+terraform {
+    required_providers {
+        oci ={
+            source = "hashicorp/oci"
+        }
+    }
+}
+
+# Step-0.1: Setting up the Provider "OCI"
 # Provider #OCI
 # Loading the information from terraform.tfvars
 provider "oci" {
