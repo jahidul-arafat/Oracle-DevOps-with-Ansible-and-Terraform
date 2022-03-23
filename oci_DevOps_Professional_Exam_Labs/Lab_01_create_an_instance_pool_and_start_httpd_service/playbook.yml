@@ -1,0 +1,32 @@
+---
+- name: Update web servers
+  hosts: webservers
+  collections:
+    - apache.builtin
+  remote_user: opc
+
+  tasks: # list
+    - name: Ensure apache is at the latest version
+      yum: # dict
+        name: httpd
+        state: latest
+      become: yes # runs as a root
+
+    - name: Restart apache
+      service:
+        name: httpd
+        state: restarted
+      become: yes # runs as a root
+
+- name: Update db servers
+  hosts: dbservers
+  collections:
+    - apache.builtin
+  remote_user: opc
+
+  tasks:
+    - name: Ensure postgresql is at the latest version
+      yum:
+        name: postgresql
+        state: latest
+      become: yes # runs as a root

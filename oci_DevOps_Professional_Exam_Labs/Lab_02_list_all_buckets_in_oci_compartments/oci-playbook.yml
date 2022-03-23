@@ -1,0 +1,30 @@
+---
+- name: List summary of existing buckets in Object Storage
+  hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars_prompt:
+    - name: namespace_name
+      prompt: "Enter Object Storage Namespace Name: "
+      default: "bmjvdjx2axyu"
+      private: no
+
+    - name: compartment_ocid
+      prompt: "Enter Your COMPARTMENT OCID"
+      default: "ocid1.compartment.oc1..aaaaaaaa5hplc4q67l76kzeygvcbbu73da3kxhndhogtfvxgwtpd2xzayecq" # sandbox compartment
+      private: no
+
+
+  tasks:
+    - name: List bucket facts
+      oci_object_storage_bucket_facts:
+        namespace_name: "{{namespace_name}}"
+        compartment_id: "{{compartment_ocid}}"
+      register: result
+
+    - name: Dumping the facts
+      debug:
+        msg: "{{result}}"
+
+
