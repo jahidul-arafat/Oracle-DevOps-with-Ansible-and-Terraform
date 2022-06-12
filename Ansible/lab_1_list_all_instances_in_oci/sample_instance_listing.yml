@@ -4,7 +4,7 @@
     - oracle.oci
 
   vars:
-    ansible_python_interpreter: /usr/bin/python3
+    #ansible_python_interpreter: /usr/bin/python3
     file_name: ./fetched_oci_facts_details.txt
     json_file_name: ./oci_facts_details.json
 
@@ -25,10 +25,10 @@
       with_items: "{{result.instances}}"
 
     # Task-2: Check if file exists. If not, then create an empty file
-#    - name: Check if the required file exists
-#      stat:
-#        path: "{{file_name}}"
-#      register: file_data
+    - name: Check if the required file exists
+      stat:
+       path: "{{file_name}}"
+      register: file_data
 
     - name: Remove the file if it exists
       ignore_errors: yes
